@@ -49,44 +49,28 @@
   <div id="root" style="display:none;"></div>
 
   <script>
-    // Simple hash function (SHA-256)
     async function hashPassword(pw) {
       const data = new TextEncoder().encode(pw);
       const buf = await crypto.subtle.digest('SHA-256', data);
       return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
-
-    // CHANGE THIS: Set your password by replacing the hash below.
-    // To generate a new hash: open browser console, run:
-    //   crypto.subtle.digest('SHA-256', new TextEncoder().encode('YOUR_PASSWORD')).then(b => console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')))
     const HASH = 'b687451676426ef42e0fccd585e9b38bd2ff6d308d06f69a9512ea44f8923c7d'; // password set by user
-
     async function checkAuth() {
       const stored = sessionStorage.getItem('spp_auth');
       if (stored === HASH) { unlock(); return; }
-
       document.getElementById('go').onclick = tryPassword;
       document.getElementById('pw').onkeydown = (e) => { if (e.key === 'Enter') tryPassword(); };
     }
-
     async function tryPassword() {
       const pw = document.getElementById('pw').value;
       const h = await hashPassword(pw);
-      if (h === HASH) {
-        sessionStorage.setItem('spp_auth', HASH);
-        unlock();
-      } else {
-        document.getElementById('err').style.display = 'block';
-        document.getElementById('pw').value = '';
-        document.getElementById('pw').focus();
-      }
+      if (h === HASH) { sessionStorage.setItem('spp_auth', HASH); unlock(); }
+      else { document.getElementById('err').style.display = 'block'; document.getElementById('pw').value = ''; document.getElementById('pw').focus(); }
     }
-
     function unlock() {
       document.getElementById('gate').style.display = 'none';
       document.getElementById('root').style.display = 'block';
     }
-
     checkAuth();
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -481,11 +465,6 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges)
   const isOversized = spaces > 1;
   const typeIdx = getPalletTypeIndex(weightKg);
   
-  // Weight default note
-  if (!weightKg || weightKg === 500) {
-    result.info.push("Weight assumed 500kg (Full Pallet column). Change weight for a different bracket.");
-  }
-  
   if (haulier === "CDL") {
     const z = matchCDLZone(postcode);
     if (!z) { result.errors.push("Postcode not found in CDL zones"); return result; }
@@ -777,6 +756,33 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges)
     result.warnings.push(`Small vehicle: Not on standard rate sheet. Check with ${haulier}.`);
   }
   
+  // Courier viability: if destination is roughly 2hrs drive or less from collection
+  // Use zone number as a proxy -- lower zones are local/nearby
+  const zoneNum = (() => {
+    const zStr = result.zone || '';
+    const m = zStr.match(/\d+/);
+    return m ? parseInt(m[0]) : null;
+  })();
+  
+  const isNearby = (() => {
+    if (zoneNum === null) return false;
+    if (haulier === "CDL") return zoneNum <= 4;
+    if (haulier === "Longs of Leeds") return zoneNum <= 3;
+    if (haulier === "TWA") {
+      const zoneName = result.zone || '';
+      return zoneName === 'Zone LOCAL' || zoneNum <= 3;
+    }
+    if (haulier === "Horizon") {
+      const zoneName = result.zone || '';
+      return zoneName === 'Local' || zoneNum <= 3;
+    }
+    return false;
+  })();
+  
+  if (isNearby) {
+    result.courier = "Destination looks within ~2hrs of collection. If this job is urgent, it may be worth checking a courier rate.";
+  }
+  
   return result;
 }
 
@@ -911,7 +917,7 @@ function RateLookupApp() {
           
           {/* Summary pill */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-            {[haulier, postcode.toUpperCase(), `${qty}x ${palletSize}`, weight ? `${weight}kg` : '500kg (assumed)', ...selectedSurcharges.map(s => SURCHARGES.find(x => x.id === s)?.label)].filter(Boolean).map((t, i) => (
+            {[haulier, postcode.toUpperCase(), `${qty}x ${palletSize}`, weight ? `${weight}kg` : null, ...selectedSurcharges.map(s => SURCHARGES.find(x => x.id === s)?.label)].filter(Boolean).map((t, i) => (
               <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: i === 0 ? `${cpColor}15` : 'var(--card-bg, #f1f5f9)', fontSize: 11, fontWeight: 600, color: i === 0 ? cpColor : 'var(--text-secondary, #64748b)', border: `1px solid ${i === 0 ? cpColor + '30' : 'var(--border, #e2e8f0)'}` }}>{t}</span>
             ))}
           </div>
@@ -998,6 +1004,13 @@ function RateLookupApp() {
                   </div>
                 );
               })}
+              
+              {/* Courier viability */}
+              {result.courier && (
+                <div style={{ padding: '10px 14px', borderRadius: 10, background: '#FFF7ED', border: '2px solid #FB923C', color: '#9A3412', fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+                  <span style={{ fontWeight: 700 }}>Courier viability: </span>{result.courier}
+                </div>
+              )}
               
               {/* Timer */}
               {elapsed && (
