@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SPP Rate Lookup</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SPP Rates">
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; padding: 0; background: #f8fafc; -webkit-font-smoothing: antialiased; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0f172a; }
+      :root {
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --text-tertiary: #64748b;
+        --border: #334155;
+        --card-bg: #1e293b;
+        --bg: #0f172a;
+      }
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --text-primary: #0f172a;
+        --text-secondary: #64748b;
+        --text-tertiary: #94a3b8;
+        --border: #e2e8f0;
+        --card-bg: #ffffff;
+        --bg: #f8fafc;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useCallback, useMemo, useRef, useEffect } = React;
+
+
+// ============ EMBEDDED RATE DATA ============
+
+const CDL_ZONES = [
+  {zone:1,postcodes:"DN15-21, DN31-41, HU1-5, HU8-10, HU13-15, LN1-3, LN7-13",nd:30,eco:30},
+  {zone:2,postcodes:"B, CV, DE, DY, LE, NN, ST, WS, WV",nd:55.5,eco:50},
+  {zone:3,postcodes:"CW, M, MK, NG, OX6,8,15-17,25-27, PE1-11,17-19,26-29, S, SK, TF, WA, WR",nd:56.5,eco:51},
+  {zone:4,postcodes:"AL, BB, BD1-22,97-99, BL, CB, CH, DN (remainder), GL, HD, HP, HR, HX, L, LN4-6, LS, LU, OL, OX1-5,7,9-14,18,20,28-29,33,39,44,49, PE15-16, PR, SG, WF, WN",nd:58.5,eco:53},
+  {zone:5,postcodes:"BS, FY, HU6-7,11-12,16-20, PE12-14,20-25,30-38, SN1-7,14-16,25-26,38,99, YO1,8,10,14-16,19,23-25,31,41-43,90-91",nd:59,eco:54},
+  {zone:6,postcodes:"DH1-7,9,97,99, DL1-7,9-10,14-17, RG1-2,4-10,14,17-20,30-31, SN8-13, SR, SY1-6,13-14, TS, YO7,11-13,17-18,21-22,26,30,32,51,60-62",nd:63,eco:56.5},
+  {zone:7,postcodes:"BD23-24, CM1-8,11-24,77, CO1,3,6,8-10, DH8, DL8,11-13, EN, HG, IP7,22,24-33,98, LA1-10, NE1-18,20-45,62-64,82,85,98-99, NR1-6,8-11,16-27, RG12,21-29,40-42,45, SL, WD",nd:65,eco:60},
+  {zone:8,postcodes:"BA, SO, SP",nd:66.5,eco:61},
+  {zone:9,postcodes:"BH, CM0,9, CO2,4-5,7,11-16, DT, GU, IP1-6,8-21,23, KT14-16,23-24, ME, NR7,12-15,28-35, RH, SS, TA, TN7-11,13-16",nd:68.5,eco:62.5},
+  {zone:10,postcodes:"BN, CT, LA11-23, PO1-22, TN1-6,12,17-40",nd:70,eco:65},
+  {zone:11,postcodes:"EX",nd:77,eco:68},
+  {zone:12,postcodes:"CA, NE46-47,49",nd:78.5,eco:70},
+  {zone:13,postcodes:"PL, TQ",nd:79,eco:70},
+  {zone:14,postcodes:"NE19,48,61,65-71",nd:80,eco:70},
+  {zone:15,postcodes:"TR1-20,26-27,93",nd:92,eco:76},
+  {zone:21,postcodes:"BR, CR, DA, KT1-13,17-22, SM, TW",nd:73,eco:66},
+  {zone:22,postcodes:"E3,5-18,20, N2,4-8,10,15-17,19,22, NW2-3,5-6,8,10-11, SE2-10,12-15,18-28, SW2,4-6,8-20, W3-14",nd:77,eco:68.5},
+  {zone:23,postcodes:"E1-2,1W,77,98, EC, N1,1C,1P, NW1, SE1,11,16-17, SW1,3,7, W1-2, WC",nd:80,eco:75},
+  {zone:30,postcodes:"CF3,5,10-11,14-15,23-24,38,46-48,64,81-83, NP",nd:59,eco:54},
+  {zone:31,postcodes:"CF31-37,39-45,61-63,71-72",nd:65,eco:60},
+  {zone:32,postcodes:"LD, LL11-32, SY7-8,10-12",nd:73,eco:66.5},
+  {zone:33,postcodes:"LL33-49,51-78, SA, SY9,15-25",nd:78.5,eco:70},
+  {zone:40,postcodes:"EH1-42,47-49,51-55,95,99, G1-15,20-23,31-34,40-46,51-53,58,60-62,64-79,81-82, ML1-9, PA1-19",nd:80.5,eco:70},
+  {zone:41,postcodes:"DG1-7,10-14,16, EH43-46, KA1-18,20-25,29-30, ML10-12, TD",nd:82,eco:72},
+  {zone:42,postcodes:"FK1-7,10, KY1-13,99",nd:86.5,eco:76},
+  {zone:43,postcodes:"IV4-20,30-32,36,63, PH21-26",nd:"N/A",eco:101},
+  {zone:44,postcodes:"DG8-9, FK8-9,11-21, G63,83-84, KA19,26, KY14-16, PH1-9",nd:101.5,eco:86.5},
+  {zone:45,postcodes:"AB10-16,21-25,30-32,39,41-42,51",nd:112,eco:97},
+  {zone:46,postcodes:"IV1-3",nd:114,eco:101},
+  {zone:47,postcodes:"DD, PH10-14",nd:105,eco:90},
+  {zone:50,postcodes:"AB33-38,43-45,52-56",nd:"N/A",eco:95},
+  {zone:51,postcodes:"PH15-20",nd:"N/A",eco:106},
+  {zone:52,postcodes:"IV21-28,40,52-54, KW1-3,5-14, PH30-32,35",nd:"N/A",eco:115},
+  {zone:53,postcodes:"IV41-49,51,55-56",nd:"N/A",eco:138},
+  {zone:54,postcodes:"KW15-17, PA20,41-49,60-78, PH42-44, ZE1-3",nd:"N/A",eco:161},
+  {zone:55,postcodes:"PA21-27,31-33,35-38",nd:"N/A",eco:127},
+  {zone:56,postcodes:"PA28-30,34,80, PH33-34,36-41,49-50",nd:"N/A",eco:133},
+  {zone:57,postcodes:"HS1-9, KA27",nd:"N/A",eco:151},
+  {zone:58,postcodes:"KA28",nd:"N/A",eco:171},
+  {zone:65,postcodes:"Belfast BT1-18",nd:"N/A",eco:109},
+  {zone:66,postcodes:"Rest of Northern Ireland BT19+",nd:"N/A",eco:109},
+  {zone:70,postcodes:"TR21-25 (Scilly Isles)",nd:"N/A",eco:93},
+  {zone:71,postcodes:"Isle of Wight PO30-41",nd:"N/A",eco:100},
+  {zone:72,postcodes:"Isle of Man IM",nd:"N/A",eco:145},
+  {zone:73,postcodes:"Jersey JE1-5, Guernsey GY1-8",nd:"N/A",eco:194},
+  {zone:74,postcodes:"Alderney GY9, Sark GY10, Herm Island",nd:"POA",eco:"POA"},
+];
+
+// Expanded Longs zone entries: [pattern, zone], sorted specific-first (district ranges before bare areas)
+const LONGS_ZONE_LIST = [["E1",11],["E4",9],["G9",11],["N3",9],["N9",9],["W1",11],["W6",10],["W5",9],["W7",9],["BB0",3],["DH1",7],["DN4",5],["E20",10],["E77",10],["E98",10],["G90",11],["G80",12],["N13",10],["N22",10],["N81",10],["N12",9],["N14",9],["NW8",10],["NW4",9],["NW7",9],["NW9",9],["S35",3],["S49",3],["S36",6],["SE1",11],["SE5",11],["SE2",9],["SK9",6],["SL0",9],["SL3",9],["SW1",11],["SW2",10],["SY8",8],["SY7",11],["W14",10],["W13",9],["YO1",6],["YO7",6],["YO8",8],["BB18",2],["BB94",2],["CH70",2],["CH88",2],["CH99",2],["CM15",8],["CM77",8],["CM92",8],["CM14",9],["CM16",9],["DG16",11],["DN55",3],["E2-3",10],["EH77",12],["EH91",12],["EH95",12],["EH99",12],["G1-5",11],["IV99",16],["IV63",18],["KA26",12],["KY99",13],["LL20",8],["N1-2",10],["N1-8",10],["NW26",10],["PA98",13],["PA20",19],["PA80",19],["PE99",5],["PH33",18],["PO24",9],["RM50",9],["SE11",11],["SE20",9],["SE25",9],["SE28",9],["SE99",10],["SL60",6],["SL95",6],["SW95",11],["SW99",11],["SW20",9],["SY99",11],["TN15",11],["TN14",9],["TN16",9],["W1-2",11],["W3-4",10],["YO25",6],["YO90",6],["YO30",11],["YO51",11],["YO91",11],["YO95",11],["YO26",8],["CH1-5",2],["CH6-8",5],["CM0-9",8],["DA1-2",9],["DA5-8",9],["DA3-4",8],["DG1-2",11],["DG3-9",12],["DH6-7",7],["DH2-5",8],["DH8-9",8],["DN1-3",3],["E5-18",10],["FK1-9",12],["KA1-3",11],["KW1-3",18],["KY1-5",12],["LN1-6",3],["N1-11",10],["NW1-3",10],["NW1-6",10],["PA1-4",12],["PH1-7",15],["S1-14",3],["SE3-4",10],["SK1-8",2],["SL1-2",6],["SL4-9",6],["SW1-4",11],["SW5-6",10],["SY1-6",8],["TQ1-5",11],["W8-12",10],["YO2-6",11],["BB1-12",2],["DA9-13",8],["DN5-12",3],["EH1-30",12],["G11-15",11],["G20-23",11],["G31-34",11],["G40-46",11],["G51-53",11],["G58-79",11],["G81-82",11],["G83-84",12],["IV1-20",16],["KA4-10",12],["KW5-14",18],["KY6-10",13],["LN7-10",6],["N15-19",10],["N20-21",9],["PA5-19",13],["PE1-19",5],["PH8-13",16],["PO1-22",9],["RM1-15",9],["S17-21",3],["S25-26",3],["S30-31",3],["S40-45",3],["S60-66",3],["S69-75",3],["S80-81",3],["S94-99",3],["S32-33",6],["SE6-10",10],["SW1-11",11],["SY9-25",11],["TD1-10",11],["TN1-13",11],["TQ6-11",12],["CH25-34",2],["CH41-49",2],["CH60-66",2],["CM11-13",8],["CM17-24",8],["CM98-99",8],["DA14-18",9],["DG10-14",11],["DH97-99",8],["DN14-22",3],["DN31-41",5],["EH37-38",12],["EH43-49",12],["EH51-55",12],["EH31-36",13],["EH39-42",13],["FK10-21",13],["IV30-36",16],["IV21-28",18],["IV40-49",19],["IV51-56",19],["KA11-17",11],["KA20-25",11],["KA29-30",11],["KA18-19",12],["KA27-28",19],["KW15-17",22],["KY11-12",12],["KY13-16",13],["LL11-14",8],["LL15-19",11],["LL21-49",11],["LL51-78",11],["LN11-13",3],["NW10-11",10],["PA39-40",12],["PA81-88",13],["PA41-49",19],["PA60-78",19],["PA21-38",18],["PE26-29",5],["PE20-25",6],["PE30-38",6],["PH14-18",15],["PH19-26",16],["PH30-32",16],["PH34-35",16],["PH36-41",18],["PH49-50",18],["PH42-44",19],["PO30-41",17],["RM19-20",9],["RM16-18",8],["SE15-17",11],["SE12-14",10],["SE18-19",10],["SE21-24",10],["SE26-27",10],["SK10-17",2],["SK22-23",2],["SW12-19",10],["TD11-15",12],["TN17-40",11],["TQ12-14",11],["YO10-19",6],["YO21-22",6],["YO31-32",6],["YO60-62",6],["YO41-43",11],["YO23-24",8],["B",4],["L",2],["M",2],["AB",15],["AL",6],["BA",8],["BD",3],["BH",8],["BL",2],["BN",11],["BR",9],["BS",6],["BT",14],["CA",7],["CB",8],["CF",6],["CO",6],["CR",9],["CT",9],["CV",4],["CW",2],["DD",15],["DE",4],["DL",7],["DT",11],["DY",4],["EC",11],["EN",9],["EX",11],["FY",8],["GL",6],["GU",9],["GY",19],["HA",9],["HD",2],["HG",3],["HP",6],["HR",6],["HS",19],["HU",5],["HX",2],["IG",9],["IM",19],["IP",6],["JE",19],["KT",9],["LA",7],["LD",11],["LE",4],["LS",1],["LU",6],["ME",8],["MK",5],["ML",11],["NE",7],["NG",4],["NN",4],["NP",6],["NR",8],["OL",2],["OX",6],["PL",11],["PR",2],["RG",8],["RH",9],["SA",11],["SG",6],["SM",9],["SN",6],["SO",8],["SP",9],["SR",8],["SS",6],["ST",4],["TA",11],["TF",4],["TR",15],["TS",7],["TW",9],["UB",9],["WA",2],["WC",11],["WD",6],["WF",1],["WN",2],["WR",5],["WS",4],["WV",4],["ZE",22],["NPT",6],["ROI",20],["Dublin",21]];
+
+const LONGS_ND = {1:[32.87,34.03,35.2,37.58,39.95,76.5,108.15,132.08,150.3,164.88],2:[39.22,40.53,45.78,47.42,48.95,96.32,129.51,163.88,181.15,204.3],3:[44.82,46.14,50.73,54.35,56.85,102.68,147.03,177.12,200.1,233.64],4:[44.17,45.48,49.42,51.39,53.36,105.42,156.81,207.52,246.85,294.12],5:[46.14,47.45,53.03,57.63,59.6,114.7,165.96,219.76,263.65,314.28],6:[52.05,53.36,57.3,61.9,63.87,124.54,182.64,242,302.5,363],7:[57.27,58.59,59.9,65.48,67.45,133.6,199.08,257.44,320,372.24],8:[60.91,62.23,63.54,69.12,71.09,140.88,210,277.52,295.85,349.62],9:[73.06,74.37,77,78.31,79.63,157.94,235.59,312.6,388.95,464.64],10:[78.31,79.63,82.25,83.57,84.88,168.46,251.37,333.6,415.2,496.14],11:[84.88,86.19,88.82,90.13,91.45,181.58,271.05,359.88,448.05,535.56],12:[90.11,91.42,94.05,94.7,96.67,192.04,286.74,380.8,474.2,566.94],13:[98.67,99.98,102.61,103.27,105.24,209.16,312.42,415.04,517,618.3],14:[136.1,137.41,141.35,142.67,145.95,290.6,434.58,577.88,720.55,862.56],15:[111.4,112.71,114.13,121.42,123.39,245.46,366.87,487.64,607.75,727.2],16:[114.68,115.99,117.41,124.7,126.67,252.04,376.74,500.76,624.15,746.88],17:[108.65,110.18,117.75,131.03,133.32,265.32,396.66,527.36,657.4,786.78],18:[137.13,137.13,137.13,137.13,137.13,272.94,408.09,542.6,676.45,809.64],21:[122.97,126.25,129.53,136.1,139.38,277.46,414.87,551.64,687.75,823.2]};
+
+const LONGS_ECO = {1:[32.35,33.49,34.64,36.96,39.29,75.22,106.32,129.88,147.8,162.12],2:[37.57,38.89,40.86,43.16,45,88.42,120.27,152.96,173.35,197.1],3:[42.85,44.17,45.15,48.11,50.61,93,133.92,163.52,187.85,219],4:[41.54,42.85,44.17,46.79,48.76,96.22,143.01,189.16,233.2,277.74],5:[44.17,45.48,47.12,50.41,52.38,101.44,147.84,195.6,241.55,287.76],6:[49.42,50.73,53.36,54.02,55.99,109.24,160.38,212.32,265.4,318.48],7:[54.65,55.96,57.27,58.26,59.57,117.84,175.44,227.96,283.15,331.08],8:[58.29,59.6,60.91,61.24,62.23,123.14,183.39,242.36,268.35,317.64],9:[67.81,69.12,71.75,74.37,75.69,150.06,223.77,296.84,369.25,441],10:[74.37,75.69,78.31,79.63,80.94,160.58,239.55,317.84,395.5,472.5],11:[80.94,82.25,84.88,86.19,87.51,173.7,259.23,344.12,428.35,511.92],12:[88.14,89.45,92.08,94.05,94.7,188.1,280.83,372.92,464.35,555.12],13:[96.04,97.36,99.98,100.64,102.61,203.92,304.56,404.52,503.85,602.52],14:[101.95,104.91,109.18,109.83,112.46,223.62,334.11,443.92,553.1,661.62],15:[101.68,102.99,106.37,108.24,110.21,219.12,327.36,434.96,541.9,648.18],16:[107.89,109.2,112.58,114.46,116.43,231.54,345.99,459.8,572.95,685.44],17:[100.69,102.22,110.18,115.48,117.75,234.2,349.98,465.12,579.55,693.42],18:[134.24,134.24,134.24,134.24,134.24,267.16,399.42,531.04,662,792.3],19:[143.3,144.61,158.07,169.56,176.79,352.26,527.07,701.24,874.75,1047.6],20:[247.38,247.38,247.38,247.38,247.38,493.46,738.87,983.6,1227.7,1471.14],22:[182.37,182.37,182.37,182.37,182.37,363.44,543.84,723.56,902.65,1081.08]};
+
+// TWA zones: [zone, postcodes, [1plt micro,qtr,half,fl,full,fp], [2plt...], [3plt...]]
+const TWA_ND = [
+  ["LOCAL","CH, L",[34,36,38,40,42,50],[66,70,74,78,82,98,160,165,170],[98,104,110,116,122,144]],
+  [1,"B, CV, CW, DE, DY, LE, NG, ST, TF, WS, WV",[57.33,58.45,61.81,63.49,65.17,70.82],[112.65,114.89,121.61,124.97,128.33,139.64,232.07,254.07,276.07],[165.98,169.34,179.42,184.46,189.5,206.47]],
+  [2,"BB, BD, BL, HD, H, LS, M, OL, PR, S1-14,17-18,20-21,25-26,35,40-45,49,60-66,70-75,80-81,96-98, SK1-8, SK9-17,22-23, WA, WF, WN",[57.89,59.01,62.93,66.01,67.69,73.72],[113.77,116.01,123.85,130.01,133.37,145.45,241.79,263.79,285.79],[167.66,171.02,182.78,192.02,197.06,215.17]],
+  [3,"DN, FY, S32-33,36, WR",[59.01,60.13,64.89,68.81,70.49,74.98],[116.01,118.25,127.77,135.61,138.97,147.96,252.59,274.59,296.59],[171.02,174.38,188.66,200.42,205.46,218.93]],
+  [4,"AL, BS, GL, HP, HU, HR, LN, LU, MK, NN, OX5,7,15-17,20,25-27, NP, PE1-16,19,26-29, PE20-25, PE30-38, SG, SN",[60.69,61.81,66.29,71.05,73.85,79.51],[119.37,121.61,130.57,140.09,145.69,157.03,261.23,283.23,305.23],[176.06,179.42,192.86,207.14,215.54,232.54]],
+  [5,"BA3,5,8-11,13-15, CB, CF, CO, DL, HG, IP, NR, OX1-4,9-14,18,28-29,33,39,44,49, SR, SS, TS1-5,19-29, TS6-18, WD, YO1,7-8,10-12,14-17,19,23-26",[64.05,65.17,68.53,72.45,74.13,81.13],[126.09,128.33,135.05,142.89,146.25,160.25,266.63,311.88,352.13],[186.14,189.5,199.58,211.34,216.38,237.38]],
+  [6,"BA1-2,4,6-7,12,16,20-22, BH, CM0,3,6-9,77, CM1-2,4-5,11-13,15,17-24,99, DA3-4,9-13, DH, KT23-24, LA, LL11-14,20, NE, ME, RG, RM16-18, RH, SL1-2,4-9, SP, SY1-6,8, YO13,18,21-22,30-32,41-43,51,60-62,90",[71.61,72.73,73.85,78.61,80.29,88.22],[141.21,143.45,145.69,155.21,158.57,174.43,290.39,345.92,396.45],[208.82,212.18,215.54,229.82,234.86,258.65]],
+  [7,"BN, CA, CT, GU, PO1-22, SO",[74.41,75.53,76.65,84.77,86.45,95.29],[146.81,149.05,151.29,167.53,170.89,188.59,314.15,369.96,420.77],[217.22,220.58,223.94,248.3,253.34,279.88]],
+  [8,"DT, LD, LL15-19,21-49,51-78, SA1-18, SY7,9-17,21-22, TN1-13,15,17-40",[77.07,78.19,83.85,92.04,93.72,103.65],[152.14,154.38,165.7,182.07,185.43,205.3,324.15,397.96,430.77],[225.22,228.58,245.54,270.11,275.15,304.95]],
+  [9,"EX, PL, SY18-20,23-25, SA19-20,31-48,61-73,80,99, TA, TQ, TR",[79.73,80.85,86.33,94.62,96.3,106.63],[157.45,159.69,170.67,187.24,190.6,211.26,362.92,437.91,507.91],[233.18,236.54,253,277.87,282.91,313.89]],
+  ["Central London","E1, EC, SE1,5,11,15-17, SW1,3-4,7-11, W1-2, WC",[null,null,null,null,96.53,106.89],[null,null,null,null,191.05,211.77,324.15,379.96,430.77],[null,null,null,null,283.58,314.66]],
+  ["Inner London","E2-3,5-18,20,98, N1-2,4-8,10-11,13,15-19,22, NW1-3,5-6,8,10-11, SE3-4,6-10,12-14,18-19,21-24,26-27, SW2,5-6,12-19, W3-4,6,8-12,14",[null,null,null,null,90.93,100.45],[null,null,null,null,179.85,198.89,324.15,379.96,430.77],[null,null,null,null,266.78,295.34]],
+  ["Outer London","BR, CM14,16, CR, DA1-2,5-8,14-18,50, E4, EN, HA, IG, KT1-22, N3,9,12,14,20-21, NW4,7,9, RM1-15,19-20, SE2,20,25,28, SL0,3, SM, SW20, TN14,16, TW, UB, W5,7,13",[null,null,null,null,86.45,95.29],[null,null,null,null,170.89,188.59,300.39,345.92,396.45],[null,null,null,null,253.34,279.88]],
+];
+
+const TWA_ECO = [
+  ["LOCAL","CH, L",[34,36,38,40,42,50],[66,70,74,78,82,98,158,163,168],[98,104,110,116,122,144]],
+  [1,"B, CV, CW, DE, DY, LE, NG, ST, TF, WS, WV",[55.09,56.21,57.33,59.57,61.25,66.32],[108.17,110.41,112.65,117.13,120.49,130.64,230.07,252.07,274.07],[159.26,162.62,165.98,172.7,177.74,192.96]],
+  [2,"BB, BD14-22,55, HD, HX, LS, M, OL, PR, S1-14,17-18,20-21,25-26,35,40-45,49,60-66,70-75,80-81,96-98, SK1-8, SK9-17,22-23, WA, WF, WN",[56.21,57.33,58.17,60.69,62.37,69.86],[110.41,112.65,114.33,119.37,122.73,137.72,239.79,261.79,283.79],[162.62,165.98,168.5,176.06,181.1,203.58]],
+  [3,"DN, FY, S32-33,36, WR",[57.33,58.45,59.85,62.65,64.33,69.93],[112.65,114.89,117.69,123.29,126.65,137.85,250.59,272.59,294.59],[165.98,169.34,173.54,181.94,186.98,203.78]],
+  [4,"AL, BS, GL, HP, HU, HR, LN, LU, MK, NN, OX5,7,15-17,20,25-27, NP, PE1-16,19,26-29, PE20-25, PE30-38, SG, SN",[59.57,60.69,61.81,63.77,65.45,71.15],[117.13,119.37,121.61,125.53,128.89,140.29,259.23,281.23,303.23],[172.7,176.06,179.42,185.3,190.34,207.44]],
+  [5,"BA3,5,8-11,13-15, CB, CF, CO, DL, HG, IP, NR, OX1-4,9-14,18,28-29,33,39,44,49, SR, SS, TS1-5,19-29, TS6-18, WD, YO1,7-8,10-12,14-17,19,23-26",[61.81,62.93,65.17,65.73,67.41,73.4],[121.61,123.85,128.33,129.45,132.81,144.8,264.63,309.88,350.13],[179.42,182.78,189.5,191.18,196.22,214.2]],
+  [6,"BA1-2,4,6-7,12,16,20-22, BH, CM0,3,6-9,77, CM1-2,4-5,11-13,15,17-24,99, DA3-4,9-13, DH, KT23-24, LA, LL11-14,20, NE, ME, RG, RM16-18, RH, SL1-2,4-9, SP, SY1-6,8, YO13,18,21-22,30-32,41-43,51,60-62,90",[69.37,70.49,71.61,71.89,72.73,79.51],[136.73,138.97,141.21,141.77,143.45,157.03,288.39,343.92,394.45],[202.1,205.46,208.82,209.66,212.18,232.54]],
+  [7,"BN, CA, CT, GU, PO1-22, SO",[72.17,73.29,74.41,75.41,76.09,81.42],[142.33,144.57,146.81,148.81,150.17,160.84,312.15,367.96,418.77],[210.5,213.86,217.22,220.22,222.26,238.25]],
+  [8,"DT, LD, LL15-19,21-49,51-78, SA1-18, SY7,9-17,21-22, TN1-13,15,17-40",[74.8,75.81,76.97,80.9,87.58,90.85],[147.6,149.61,151.94,159.8,173.16,179.7,322.15,395.96,428.77],[218.4,221.42,224.91,236.71,256.75,266.54]],
+  [9,"EX, PL, SY18-20,23-25, SA19-20,31-48,61-73,80,99, TA, TQ, TR",[76.93,78.05,79.08,83.31,84.99,93.63],[151.85,154.09,156.15,164.62,167.98,185.25,360.92,435.91,505.91],[224.78,228.14,231.23,243.93,248.97,274.88]],
+  ["Central London","E1, EC, SE1,5,11,15-17, SW1,3-4,7-11, W1-2, WC",[null,null,null,null,93.17,103.02],[null,null,null,null,184.33,204.04,322.15,377.96,428.77],[null,null,null,null,273.5,303.07]],
+  ["Inner London","E2-3,5-18,20,98, N1-2,4-8,10-11,13,15-19,22, NW1-3,5-6,8,10-11, SE3-4,6-10,12-14,18-19,21-24,26-27, SW2,5-6,12-19, W3-4,6,8-12,14",[null,null,null,null,87.57,96.58],[null,null,null,null,173.13,191.16,322.15,377.96,428.77],[null,null,null,null,256.7,283.75]],
+  ["Outer London","BR, CM14,16, CR, DA1-2,5-8,14-18,50, E4, EN, HA, IG, KT1-22, N3,9,12,14,20-21, NW4,7,9, RM1-15,19-20, SE2,20,25,28, SL0,3, SM, SW20, TN14,16, TW, UB, W5,7,13",[null,null,null,null,83.09,91.43],[null,null,null,null,164.17,180.86,298.39,343.92,394.45],[null,null,null,null,243.26,268.29]],
+];
+
+// Horizon: [zone, postcodes, [plus_prem, plus_eco, full_prem, full_eco, lf_prem, lf_eco, half_prem, half_eco, qtr_prem, qtr_eco, micro_prem, micro_eco]]
+const HORIZON_RATES = [
+  ["Local","L",[43,41,36,34,33,31,31,29,28,26,27,25]],
+  ["Zone 1","B, CV, CW, DE, DY, LE, NG, NN, ST, TF, WS, WV",[61,57,52,48.5,50.5,47,49,45,46,44,45,43]],
+  ["Zone 2","BB, BD, BL, DN1-12,14-22,55, HD, HX, LS, M, OL, PR, S1-14,17-18,20-21,25-26,35,40-45,49,60-66,70-75,80-81,96-98, SK1-8, WA, WF, WN",[63.5,58.5,54.5,49.5,53,48,50,46,46.5,45,45.5,44]],
+  ["Zone 3","CH, DN31-41, LN1-6, MK, PE1-16,19,26-29, WR",[66.5,60.5,57,51.5,55.5,50,52,47.5,47.5,46,46.5,45]],
+  ["Zone 4","AL, BS1-21,32,34-37, GL, HP, HR, HU, LU, OX5,7,15-17,20,25-27, NP, PE30-38, S32-33,36, SK9-17,22-23",[69,61.5,59,52.5,57.5,51,53,49,49,48,48,47]],
+  ["Zone 5","BS22-31,39-41,48-49, CF, CO, HG, IP, LN7-13, OX1-4,9-14,18,28-29,33,39,44,49, PE20-25, SG, SL1-2,4-9, SN, SS, WD",[70.5,63.5,60,54,58.5,52.5,55,52,52,50,51,49]],
+  ["Zone 6","BA, BH, CB, CM0-13,15,17-24,77,99, DA3-4,9-13, DH, DL, FY, LA, LL11-14,20, ME, NE1-13,15-18,20-42,82-83,85,88,98-99, NR, RG, RM16-18, SO, SR, SY1-6,8, TS, YO1,7-8,10-12,14-17,19,23-26",[76.5,69,65.5,59,64,58,60,58,59,57,58,56]],
+  ["Zone 7","CT, GU, KT23-24, NE19,43-49,61-71, PO1-22, RH, SP",[83,72.5,71,62,69.5,61,62.5,60.5,61.5,59.5,60.5,58.5]],
+  ["Zone 8","BN, CA1-4,8-13,16-27, DT, LD, LL15-19,21-49,51-78, SA1-18, SY7,9-17,21-22, TN1-13,15,17-40, YO13,18,21-22,30-32,41-43,51,60-62,90",[90.5,79,77.5,67.5,76,66,69,62.5,63.5,61.5,62.5,60.5]],
+  ["Zone 9","EX, PL, SY18-20,23-25, SA19-20,31-48,61-73,80,99, TA, TQ1-5,12-14",[93,81.5,80,70,78.5,68.5,71,64.5,66,63.5,65,62.5]],
+  ["Zone 10","CA5-7,14-15,28, DG1-2,10-14,16, EH1-30,37-38,43-55, FK1-9, G1-5,9,11-15,20-23,31-34,40-46,51-53,58,60-79,81-82, KA1-3,11-17,20-25,29-30, KY1-5,11-12, ML1-9, PA1-4, TD1-10, TQ6-11",[96.5,84.5,82.5,72.5,81,71,73.5,67,69,66,68,65]],
+  ["Zone 11","DG3-9, EH31-36,39-42, FK10-21, G83-84, KA4-10,18, KY6-10,13-16, ML10-12, PA5-19, TD11-15",[106.5,104.5,91.5,89.5,90,88,89.5,87.5,87.5,85.5,86.5,84.5]],
+  ["Zone 12","AB, KA19,26, PH8-13",[125.5,114,108,98,106.5,96.5,101,95,100,92.5,99,91.5]],
+  ["Zone 12A","TR",[122.5,111,105.5,95.5,104,94,98.5,92.5,97.5,90,96.5,89]],
+  ["Zone 13","IV1-20,30-32,36, PH19-26,30-32,34-35",[129,120.5,111,104,109.5,102.5,104,101,103,98.5,102,97.5]],
+  ["Zone 13A","KW1-3,5-14, IV21-28,63, PA21-38, PH33,36-41,49-50",[139,136.5,119.5,117.5,119.5,117.5,119.5,117.5,119.5,117.5,119.5,117.5]],
+  ["Zone 14","DD, PH1-7,14-18",[120.5,104,103.5,89.5,102,88,94,84,88.5,83,87.5,82]],
+  ["Zone 15","IV40-49,51-56",[225.5,null,125,null,123.5,null,117.5,null,115.5,null,114.5,null]],
+  ["Zone 16","HS, KA27-28",[266,null,145.5,null,144,null,142.5,null,140,null,139,null]],
+  ["Zone 16A","PA20,41-49,60-78,80, PH42-44",[300,null,162.5,null,161,null,159.5,null,157,null,156,null]],
+  ["Zone 17","KW15-17, ZE (excluding Outer Isles)",[292,null,158,null,158,null,158,null,158,null,158,null]],
+  ["Zone 18","BT1-23, 36-40",[115,108.5,99,93,97,91,96,89.5,93,87.5,92,86.5]],
+  ["Zone 19","BT24-35, 41-99",[120.5,113,103.5,97,101,95,100,94.5,97,91.5,96,89]],
+  ["Zone 20","Dublin (A41-42,45,94,96, D, K)",[121,null,105,null,102.5,null,100,null,97.5,null,95,null]],
+  ["Zone 21","Rest of Ireland",[133.5,null,117.5,null,115,null,110,null,107.5,null,105,null]],
+  ["Zone 22","PO30-41",[131,117.5,113,101,111,99.5,101,95.5,95.5,89.5,94,88]],
+  ["Zone 23","GY, IM, JE",[156,null,134.5,null,133,null,129.5,null,119.5,null,118.5,null]],
+  ["Central London","E1, EC, SE1,5,11,15-17, SW1,3-4,7-11, W1-2, WC",[94.5,91,81,78,80,77,79,76,77,74,76,73]],
+  ["Inner London","E2-3,5-18,20,98, N1-2,4-8,10-11,13,15-19,22, NW1-3,5-6,8,10-11, SE3-4,6-10,12-14,18-19,21-24,26-27, SW2,5-6,12-19, W3-4,6,8-12,14",[88.5,85.5,76,73,75,72,74,71,72,69,71,68]],
+  ["Outer London","BR, CM14,16, CR, DA1-2,5-8,14-18,50, E4, EN, HA, IG, KT1-22, N3,9,12,14,20-21, NW4,7,9, RM1-15,19-20, SE2,20,25,28, SL0,3, SM, SW20, TN14,16, TW, UB, W5,7,13",[84,80.5,72,69,71,68,70,66,68,64,67,63]],
+];
+
+const FUEL_SURCHARGE = 0.185; // 18.5% as of 23 April 2026
+
+const COLLECTION_POINTS = [
+  { id: "immingham", label: "Immingham", haulier: "CDL", color: "#3B82F6" },
+  { id: "triesse", label: "Triesse Ltd.", haulier: "Longs of Leeds", color: "#8B5CF6" },
+  { id: "latham", label: "James Latham Leeds", haulier: "Longs of Leeds", color: "#8B5CF6" },
+  { id: "booker", label: "Booker Timber", haulier: "TWA", color: "#F59E0B" },
+  { id: "landmark", label: "Landmark Joinery", haulier: "Horizon", color: "#10B981" },
+];
+
+const PALLET_SIZES = [
+  { id: "8x4", label: "8x4", spaces: 2, dims: "2440 x 1220mm" },
+  { id: "5x5", label: "5x5", spaces: 4, dims: "1525 x 1525mm" },
+  { id: "5x10", label: "5x10", spaces: 6, dims: "3050 x 1525mm" },
+  { id: "std", label: "Standard", spaces: 1, dims: "1200 x 1200mm" },
+];
+
+const SURCHARGES = [
+  { id: "am", label: "AM Delivery" },
+  { id: "timed", label: "Timed Delivery" },
+  { id: "hand", label: "Hand Offload" },
+  { id: "small", label: "Small Vehicle" },
+];
+
+// ============ POSTCODE MATCHING ============
+
+function extractPostcodeArea(pc) {
+  const clean = pc.toUpperCase().replace(/\s+/g, '');
+  const m = clean.match(/^([A-Z]{1,2})(\d+)/);
+  if (!m) return { area: clean.replace(/\d.*/, ''), district: null };
+  return { area: m[1], district: parseInt(m[2]) };
+}
+
+// Shared smart postcode parser: handles "BA3,5,8-11,13-15, CB, CF" by carrying
+// the last-seen area prefix forward when a fragment is just a number or range.
+function parsePostcodeString(str) {
+  const parts = str.split(',').map(p => p.trim()).filter(Boolean);
+  const entries = [];
+  let lastArea = null;
+  
+  for (const part of parts) {
+    // Skip descriptive text
+    if (part.includes('(') || part.includes('excluding') || part.includes('Rest of') || part.includes('Dublin')) continue;
+    
+    // Full pattern with area: "BA3-5" or "BA3" or "BA"
+    const fullRange = part.match(/^([A-Z]+)(\d+)-(\d+)$/);
+    if (fullRange) {
+      lastArea = fullRange[1];
+      entries.push({ area: fullRange[1], lo: parseInt(fullRange[2]), hi: parseInt(fullRange[3]) });
+      continue;
+    }
+    const fullSingle = part.match(/^([A-Z]+)(\d+)$/);
+    if (fullSingle) {
+      lastArea = fullSingle[1];
+      entries.push({ area: fullSingle[1], exact: parseInt(fullSingle[2]) });
+      continue;
+    }
+    const bareArea = part.match(/^([A-Z]+)$/);
+    if (bareArea) {
+      lastArea = bareArea[1];
+      entries.push({ area: bareArea[1] });
+      continue;
+    }
+    // Bare range "8-11" -- carry forward lastArea
+    const bareRange = part.match(/^(\d+)-(\d+)$/);
+    if (bareRange && lastArea) {
+      entries.push({ area: lastArea, lo: parseInt(bareRange[1]), hi: parseInt(bareRange[2]) });
+      continue;
+    }
+    // Bare number "5" -- carry forward lastArea
+    const bareNum = part.match(/^(\d+)$/);
+    if (bareNum && lastArea) {
+      entries.push({ area: lastArea, exact: parseInt(bareNum[1]) });
+      continue;
+    }
+    // Anything with a + like "BT19+"
+    const plusMatch = part.match(/^([A-Z]+)(\d+)\+$/);
+    if (plusMatch) {
+      lastArea = plusMatch[1];
+      entries.push({ area: plusMatch[1], lo: parseInt(plusMatch[2]), hi: 999 });
+      continue;
+    }
+  }
+  return entries;
+}
+
+function postcodeMatchesString(postcode, postcodeString) {
+  const { area, district } = extractPostcodeArea(postcode);
+  const entries = parsePostcodeString(postcodeString);
+  
+  for (const e of entries) {
+    if (e.area !== area) continue;
+    if (e.lo !== undefined && e.hi !== undefined) {
+      // Range match
+      if (district !== null && district >= e.lo && district <= e.hi) return true;
+    } else if (e.exact !== undefined) {
+      // Single district match
+      if (district !== null && district === e.exact) return true;
+    } else {
+      // Bare area match
+      return true;
+    }
+  }
+  return false;
+}
+
+function matchCDLZone(postcode) {
+  const { area } = extractPostcodeArea(postcode);
+  
+  for (const z of CDL_ZONES) {
+    // Handle remainder zones
+    if (z.postcodes.includes('(remainder)') && z.postcodes.startsWith(area)) return z;
+    if (postcodeMatchesString(postcode, z.postcodes)) return z;
+  }
+  return null;
+}
+
+function matchTWAZone(postcode, rateTable) {
+  for (const row of rateTable) {
+    if (postcodeMatchesString(postcode, row[1])) return row;
+  }
+  return null;
+}
+
+function matchLongsZone(postcode) {
+  const { area, district } = extractPostcodeArea(postcode);
+  
+  // LONGS_ZONE_LIST is pre-expanded: each entry is a single pattern like "CM17-24"
+  for (const [pattern, zone] of LONGS_ZONE_LIST) {
+    const rm = pattern.match(/^([A-Z]+)(\d+)-(\d+)$/);
+    if (rm) {
+      if (rm[1] === area && district !== null && district >= parseInt(rm[2]) && district <= parseInt(rm[3])) return zone;
+      continue;
+    }
+    const sm = pattern.match(/^([A-Z]+)(\d+)$/);
+    if (sm) {
+      if (sm[1] === area && district !== null && district === parseInt(sm[2])) return zone;
+      continue;
+    }
+    if (pattern === area) return zone;
+  }
+  return null;
+}
+
+function matchHorizonZone(postcode) {
+  for (const row of HORIZON_RATES) {
+    if (postcodeMatchesString(postcode, row[1])) return row;
+  }
+  return null;
+}
+
+// ============ MULTI-ZONE CONFLICT DETECTION ============
+
+function findAllCDLMatches(postcode) {
+  const matches = [];
+  for (const z of CDL_ZONES) {
+    if (z.postcodes.includes('(remainder)')) {
+      const { area } = extractPostcodeArea(postcode);
+      if (z.postcodes.startsWith(area)) matches.push(z);
+    } else if (postcodeMatchesString(postcode, z.postcodes)) {
+      matches.push(z);
+    }
+  }
+  return matches;
+}
+
+function findAllLongsMatches(postcode) {
+  const { area, district } = extractPostcodeArea(postcode);
+  const matches = [];
+  const seenZones = new Set();
+  for (const [pattern, zone] of LONGS_ZONE_LIST) {
+    if (seenZones.has(zone)) {
+      // Check if this pattern also matches -- if so, it's the same zone, not a conflict
+      // We only care about distinct zone numbers
+    }
+    let hit = false;
+    const rm = pattern.match(/^([A-Z]+)(\d+)-(\d+)$/);
+    if (rm) { hit = rm[1] === area && district !== null && district >= parseInt(rm[2]) && district <= parseInt(rm[3]); }
+    else {
+      const sm = pattern.match(/^([A-Z]+)(\d+)$/);
+      if (sm) { hit = sm[1] === area && district !== null && district === parseInt(sm[2]); }
+      else { hit = pattern === area; }
+    }
+    if (hit && !seenZones.has(zone)) {
+      seenZones.add(zone);
+      matches.push({ zone, pattern });
+    }
+  }
+  return matches;
+}
+
+function findAllTWAMatches(postcode, rateTable) {
+  const matches = [];
+  for (const row of rateTable) {
+    if (postcodeMatchesString(postcode, row[1])) matches.push(row);
+  }
+  return matches;
+}
+
+function findAllHorizonMatches(postcode) {
+  const matches = [];
+  for (const row of HORIZON_RATES) {
+    if (postcodeMatchesString(postcode, row[1])) matches.push(row);
+  }
+  return matches;
+}
+
+// ============ RATE CALCULATION ============
+
+function getPalletWeightType(weight) {
+  if (weight <= 150) return 0; // micro
+  if (weight <= 300) return 1; // quarter
+  if (weight <= 600) return 2; // half
+  if (weight <= 600) return 3; // light full (same weight, height differentiates)
+  if (weight <= 1200) return 4; // full
+  return 5; // full plus
+}
+
+function getPalletTypeIndex(weight, height) {
+  // MP=0, QP=1, HP=2, LFP=3, FP=4
+  if (weight <= 150 && (!height || height <= 0.6)) return 0;
+  if (weight <= 300 && (!height || height <= 0.8)) return 1;
+  if (weight <= 600 && (!height || height <= 1.2)) return 2;
+  if (weight <= 600 && (!height || height <= 2.2)) return 3;
+  if (weight <= 1200) return 4;
+  return 5; // Full Plus
+}
+
+// Oversized multipliers from the surcharge matrices
+// TWA matrix: width rows (120 | 121-150 | 151-180 | 181-210 | 211-240) x length cols
+// Horizon matrix: width rows (120 | 121-160 | 161-180 | 181-210 | 211-240) x length cols
+// 8x4: 2440x1220mm -> use 121-150 width row for buffer -> STR + 125%
+// 5x5: 1525x1525mm = 153x153cm
+//   TWA: 151-180 x 151-180 = STR + 100%
+//   Horizon: 121-160 x 121-160 = Rate + 50%
+// 5x10: 3050x1525mm = 305x153cm
+//   TWA: 151-180 x 301-330 = N/A
+//   Horizon: 121-160 x 301-330 = Rate + 200%
+function getOversizeInfo(palletSize, haulier) {
+  // Returns { multiplier, label, note } or null if N/A
+  if (palletSize === "8x4") {
+    return { multiplier: 2.25, label: "STR + 125%", note: "8x4 booked as ~240x122cm" };
+  }
+  if (palletSize === "5x5") {
+    if (haulier === "TWA") return { multiplier: 2.0, label: "STR + 100%", note: "5x5 at 153x153cm" };
+    if (haulier === "Horizon") return { multiplier: 1.5, label: "Rate + 50%", note: "5x5 at 153x153cm (Horizon 121-160 row)" };
+  }
+  if (palletSize === "5x10") {
+    if (haulier === "TWA") return null; // N/A on TWA matrix
+    if (haulier === "Horizon") return { multiplier: 3.0, label: "Rate + 200%", note: "5x10 at 305x153cm" };
+  }
+  return null;
+}
+
+function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges) {
+  const result = { nd: null, eco: null, zone: null, breakdown: {}, warnings: [], errors: [], info: [] };
+  const spaces = palletSize === "8x4" ? 2 : palletSize === "5x5" ? 4 : palletSize === "5x10" ? 6 : 1;
+  const isOversized = spaces > 1;
+  const typeIdx = getPalletTypeIndex(weightKg);
+  
+  // Weight default note
+  if (!weightKg || weightKg === 500) {
+    result.info.push("Weight assumed 500kg (Full Pallet column). Change weight for a different bracket.");
+  }
+  
+  if (haulier === "CDL") {
+    const z = matchCDLZone(postcode);
+    if (!z) { result.errors.push("Postcode not found in CDL zones"); return result; }
+    result.zone = `Zone ${z.zone}`;
+    
+    // Conflict check
+    const allMatches = findAllCDLMatches(postcode);
+    if (allMatches.length > 1) {
+      const zoneList = allMatches.map(m => `Zone ${m.zone}`).join(', ');
+      result.warnings.push(`Zone conflict: ${postcode.toUpperCase()} matches ${zoneList}. Using Zone ${z.zone} (first match). Verify manually.`);
+    }
+    
+    if (isOversized) {
+      result.info.push(`Oversized: ${palletSize} = ${spaces} pallet spaces x ${qty} = ${spaces * qty} total spaces. CDL charges per space.`);
+    }
+    
+    const totalSpaces = spaces * qty;
+    const ndPerSpace = z.nd;
+    const ecoPerSpace = z.eco;
+    
+    if (ndPerSpace !== "N/A" && ndPerSpace !== "POA") {
+      let ndBase = ndPerSpace * totalSpaces;
+      let surchargeTotal = 0;
+      if (surcharges.includes("am")) surchargeTotal += 12;
+      if (surcharges.includes("timed")) surchargeTotal += 15;
+      const ndBeforeFuel = ndBase + surchargeTotal;
+      result.nd = +(ndBeforeFuel * (1 + FUEL_SURCHARGE)).toFixed(2);
+      result.breakdown.nd = { base: ndBase, perSpace: ndPerSpace, spaces: totalSpaces, surcharges: surchargeTotal, fuel: +(ndBeforeFuel * FUEL_SURCHARGE).toFixed(2) };
+    } else if (ndPerSpace === "N/A") {
+      result.breakdown.ndNote = "N/A -- Economy only for this zone";
+    } else {
+      result.breakdown.ndNote = "POA -- contact CDL for pricing";
+    }
+    
+    if (ecoPerSpace !== "N/A" && ecoPerSpace !== "POA") {
+      let ecoBase = ecoPerSpace * totalSpaces;
+      let surchargeTotal = 0;
+      if (surcharges.includes("am")) surchargeTotal += 12;
+      if (surcharges.includes("timed")) surchargeTotal += 15;
+      const ecoBeforeFuel = ecoBase + surchargeTotal;
+      result.eco = +(ecoBeforeFuel * (1 + FUEL_SURCHARGE)).toFixed(2);
+      result.breakdown.eco = { base: ecoBase, perSpace: ecoPerSpace, spaces: totalSpaces, surcharges: surchargeTotal, fuel: +(ecoBeforeFuel * FUEL_SURCHARGE).toFixed(2) };
+    } else if (ecoPerSpace === "POA") {
+      result.breakdown.ecoNote = "POA -- contact CDL for pricing";
+    }
+    
+  } else if (haulier === "Longs of Leeds") {
+    const zone = matchLongsZone(postcode);
+    if (zone === null) { result.errors.push("Postcode not found in Longs zones"); return result; }
+    result.zone = `Zone ${zone}`;
+    
+    // Conflict check
+    const allMatches = findAllLongsMatches(postcode);
+    if (allMatches.length > 1) {
+      const zoneList = allMatches.map(m => `Zone ${m.zone}`).join(', ');
+      result.warnings.push(`Zone conflict: ${postcode.toUpperCase()} matches ${zoneList}. Using Zone ${zone} (first match). Verify manually.`);
+    }
+    
+    // For oversized: use combined FP columns based on total spaces
+    // For standard: use weight-based column
+    const totalSpaces = spaces * qty;
+    let colIdx;
+    if (isOversized) {
+      // 2FP=col5, 3FP=col6, 4FP=col7, 5FP=col8, 6FP=col9
+      if (totalSpaces <= 1) colIdx = 4;
+      else if (totalSpaces <= 2) colIdx = 5;
+      else if (totalSpaces <= 3) colIdx = 6;
+      else if (totalSpaces <= 4) colIdx = 7;
+      else if (totalSpaces <= 5) colIdx = 8;
+      else colIdx = 9;
+      
+      if (totalSpaces > 6) {
+        result.warnings.push(`${totalSpaces} pallet spaces exceeds 6 FP max on Longs rate card. Contact Longs for quotation.`);
+      }
+      result.info.push(`Oversized: ${palletSize} = ${spaces} spaces x ${qty} = ${totalSpaces} total. Using ${totalSpaces}FP combined column.`);
+    } else {
+      colIdx = typeIdx;
+    }
+    
+    const ndRates = LONGS_ND[zone];
+    const ecoRates = LONGS_ECO[zone];
+    
+    // Zone 21 = ND only, Zones 19,20,22 = Economy only
+    const ecoOnlyZones = [19, 20, 22];
+    const ndOnlyZones = [21];
+    
+    if (!ndOnlyZones.includes(zone)) {
+      // Has economy
+      if (ecoRates && typeof ecoRates[0] === 'number') {
+        let ecoBase;
+        if (isOversized) {
+          ecoBase = (colIdx <= 9 && ecoRates[colIdx]) ? ecoRates[colIdx] : null;
+        } else {
+          ecoBase = (ecoRates[colIdx] || 0) * qty;
+        }
+        if (ecoBase !== null && ecoBase > 0) {
+          let surchargeTotal = 0;
+          if (surcharges.includes("am")) surchargeTotal += 15.63;
+          const ecoBeforeFuel = ecoBase + surchargeTotal;
+          result.eco = +(ecoBeforeFuel * (1 + FUEL_SURCHARGE)).toFixed(2);
+          result.breakdown.eco = { base: ecoBase, surcharges: surchargeTotal, fuel: +(ecoBeforeFuel * FUEL_SURCHARGE).toFixed(2) };
+        }
+      }
+    } else {
+      result.breakdown.ecoNote = "Zone " + zone + " -- Next Day only";
+    }
+    
+    if (!ecoOnlyZones.includes(zone)) {
+      // Has next day
+      if (ndRates && typeof ndRates[0] === 'number') {
+        let ndBase;
+        if (isOversized) {
+          ndBase = (colIdx <= 9 && ndRates[colIdx]) ? ndRates[colIdx] : null;
+        } else {
+          ndBase = (ndRates[colIdx] || 0) * qty;
+        }
+        if (ndBase !== null && ndBase > 0) {
+          let surchargeTotal = 0;
+          if (surcharges.includes("am")) surchargeTotal += 15.63;
+          const ndBeforeFuel = ndBase + surchargeTotal;
+          result.nd = +(ndBeforeFuel * (1 + FUEL_SURCHARGE)).toFixed(2);
+          result.breakdown.nd = { base: ndBase, surcharges: surchargeTotal, fuel: +(ndBeforeFuel * FUEL_SURCHARGE).toFixed(2) };
+        }
+      }
+    } else {
+      result.breakdown.ndNote = "Zone " + zone + " -- Economy only";
+    }
+    
+  } else if (haulier === "TWA") {
+    const ndRow = matchTWAZone(postcode, TWA_ND);
+    const ecoRow = matchTWAZone(postcode, TWA_ECO);
+    if (!ndRow && !ecoRow) { result.errors.push("Postcode not found in TWA zones"); return result; }
+    result.zone = ndRow ? `Zone ${ndRow[0]}` : `Zone ${ecoRow[0]}`;
+    
+    // Conflict check
+    const allMatches = findAllTWAMatches(postcode, TWA_ND);
+    if (allMatches.length > 1) {
+      const zoneList = allMatches.map(m => `Zone ${m[0]}`).join(', ');
+      result.warnings.push(`Zone conflict: ${postcode.toUpperCase()} matches ${zoneList}. Using ${result.zone} (first match). Verify manually.`);
+    }
+    
+    // London zone check: Full Pallet only for 1-3 pallets
+    const zoneName = ndRow ? ndRow[0] : ecoRow[0];
+    const isLondon = typeof zoneName === 'string' && zoneName.includes('London');
+    if (isLondon && typeIdx < 4 && !isOversized) {
+      result.errors.push(`TWA ${zoneName}: Full Pallet only for 1-3 pallets. Smaller pallet types not available.`);
+      return result;
+    }
+    
+    // Size index: micro=0, qtr=1, half=2, fl=3, full=4, fp=5
+    let sizeIdx = isOversized ? 4 : typeIdx;
+    
+    const getRate = (row, pltCount) => {
+      if (!row) return null;
+      const rateArr = pltCount === 1 ? row[2] : pltCount === 2 ? row[3] : row[4];
+      if (!rateArr || rateArr[sizeIdx] === null) return null;
+      return rateArr[sizeIdx];
+    };
+    
+    if (!isOversized) {
+      const ndBase = getRate(ndRow, Math.min(qty, 3));
+      const ecoBase = getRate(ecoRow, Math.min(qty, 3));
+      
+      if (ndBase !== null) {
+        let surchargeTotal = 0;
+        if (surcharges.includes("am")) surchargeTotal += 7.5;
+        if (surcharges.includes("timed")) surchargeTotal += 15;
+        const total = ndBase + surchargeTotal;
+        result.nd = +(total * (1 + FUEL_SURCHARGE)).toFixed(2);
+        result.breakdown.nd = { base: ndBase, surcharges: surchargeTotal, fuel: +(total * FUEL_SURCHARGE).toFixed(2) };
+      }
+      if (ecoBase !== null) {
+        let surchargeTotal = 0;
+        if (surcharges.includes("am")) surchargeTotal += 7.5;
+        if (surcharges.includes("timed")) surchargeTotal += 15;
+        const total = ecoBase + surchargeTotal;
+        result.eco = +(total * (1 + FUEL_SURCHARGE)).toFixed(2);
+        result.breakdown.eco = { base: ecoBase, surcharges: surchargeTotal, fuel: +(total * FUEL_SURCHARGE).toFixed(2) };
+      }
+    } else {
+      // Oversized: look up from matrix
+      const osInfo = getOversizeInfo(palletSize, "TWA");
+      if (!osInfo) {
+        result.errors.push(`${palletSize} is N/A on the TWA oversized matrix. Contact TWA for quotation.`);
+        return result;
+      }
+      
+      result.info.push(`Oversized: ${palletSize} priced at ${osInfo.label} (${osInfo.note})`);
+      
+      const ndBase1 = getRate(ndRow, 1);
+      const ecoBase1 = getRate(ecoRow, 1);
+      
+      const calcOS = (base1, label) => {
+        if (base1 === null) return null;
+        let base = base1 * osInfo.multiplier * qty;
+        let surchargeTotal = surcharges.includes("am") ? 7.5 : 0;
+        if (surcharges.includes("timed")) surchargeTotal += 15;
+        const total = base + surchargeTotal;
+        return { total: +(total * (1 + FUEL_SURCHARGE)).toFixed(2), base: +base.toFixed(2), surcharges: surchargeTotal, fuel: +(total * FUEL_SURCHARGE).toFixed(2), note: osInfo.label };
+      };
+      
+      const ndCalc = calcOS(ndBase1, 'nd');
+      const ecoCalc = calcOS(ecoBase1, 'eco');
+      if (ndCalc) { result.nd = ndCalc.total; result.breakdown.nd = ndCalc; }
+      if (ecoCalc) { result.eco = ecoCalc.total; result.breakdown.eco = ecoCalc; }
+    }
+    
+  } else if (haulier === "Horizon") {
+    const row = matchHorizonZone(postcode);
+    if (!row) { result.errors.push("Postcode not found in Horizon zones"); return result; }
+    result.zone = row[0];
+    
+    // Conflict check
+    const allMatches = findAllHorizonMatches(postcode);
+    if (allMatches.length > 1) {
+      const zoneList = allMatches.map(m => m[0]).join(', ');
+      result.warnings.push(`Zone conflict: ${postcode.toUpperCase()} matches ${zoneList}. Using ${row[0]} (first match). Verify manually.`);
+    }
+    
+    const r = row[2]; // [plus_prem, plus_eco, full_prem, full_eco, lf_prem, lf_eco, half_prem, half_eco, qtr_prem, qtr_eco, micro_prem, micro_eco]
+    
+    // Map typeIdx to rate array position: [premIdx, ecoIdx]
+    const rateMap = { 0: [10,11], 1: [8,9], 2: [6,7], 3: [4,5], 4: [2,3], 5: [0,1] };
+    
+    if (!isOversized) {
+      const [premIdx, ecoIdx] = rateMap[typeIdx] || rateMap[4];
+      const ndBase = r[premIdx];
+      const ecoBase = r[ecoIdx];
+      
+      const calcTotal = (base) => {
+        if (base === null) return null;
+        let total = base * qty;
+        let surchargeTotal = 0;
+        if (surcharges.includes("am")) {
+          // Horizon AM: 2-3 plt = £10.50, 4-5 = £12, 6 = £12, 7+ = £17. 1 plt not listed.
+          if (qty === 1) {
+            surchargeTotal += 10.5;
+            result.info.push("Horizon AM for 1 pallet not listed on rate sheet. Using 2-3 pallet rate (£10.50). Verify with haulier.");
+          } else if (qty <= 3) surchargeTotal += 10.5;
+          else if (qty <= 6) surchargeTotal += 12;
+          else surchargeTotal += 17;
+        }
+        if (surcharges.includes("timed")) surchargeTotal += 17;
+        return { total: +((total + surchargeTotal) * (1 + FUEL_SURCHARGE)).toFixed(2), base: total, surcharges: surchargeTotal, fuel: +((total + surchargeTotal) * FUEL_SURCHARGE).toFixed(2) };
+      };
+      
+      const ndCalc = calcTotal(ndBase);
+      const ecoCalc = calcTotal(ecoBase);
+      if (ndCalc) { result.nd = ndCalc.total; result.breakdown.nd = ndCalc; }
+      else if (ndBase === null) { result.breakdown.ndNote = "Premium not available for this zone"; }
+      if (ecoCalc) { result.eco = ecoCalc.total; result.breakdown.eco = ecoCalc; }
+      else if (ecoBase === null) { result.breakdown.ecoNote = "Economy not available for this zone"; }
+    } else {
+      // Oversized: look up from matrix
+      const osInfo = getOversizeInfo(palletSize, "Horizon");
+      if (!osInfo) {
+        result.errors.push(`${palletSize} is N/A on the Horizon oversized matrix. Contact Horizon for quotation.`);
+        return result;
+      }
+      
+      result.info.push(`Oversized: ${palletSize} priced at ${osInfo.label} (${osInfo.note})`);
+      
+      const baseNd = r[2]; // Full Premium as STR
+      const baseEco = r[3]; // Full Economy as STR
+      
+      const calcOS = (base) => {
+        if (base === null) return null;
+        let total = base * osInfo.multiplier * qty;
+        let surchargeTotal = 0;
+        if (surcharges.includes("am")) surchargeTotal += qty <= 3 ? 10.5 : qty <= 6 ? 12 : 17;
+        if (surcharges.includes("timed")) surchargeTotal += 17;
+        return { total: +((total + surchargeTotal) * (1 + FUEL_SURCHARGE)).toFixed(2), base: +total.toFixed(2), surcharges: surchargeTotal, fuel: +((total + surchargeTotal) * FUEL_SURCHARGE).toFixed(2), note: osInfo.label };
+      };
+      
+      const ndCalc = calcOS(baseNd);
+      const ecoCalc = calcOS(baseEco);
+      if (ndCalc) { result.nd = ndCalc.total; result.breakdown.nd = ndCalc; }
+      else { result.breakdown.ndNote = "Premium not available for this zone"; }
+      if (ecoCalc) { result.eco = ecoCalc.total; result.breakdown.eco = ecoCalc; }
+      else { result.breakdown.ecoNote = "Economy not available for this zone"; }
+    }
+  }
+  
+  // Surcharge warnings
+  if (surcharges.includes("hand") && haulier !== "CDL") {
+    result.warnings.push(`Hand offload: Not standard on ${haulier}'s rate sheet. Check with haulier.`);
+  }
+  if (surcharges.includes("small")) {
+    result.warnings.push(`Small vehicle: Not on standard rate sheet. Check with ${haulier}.`);
+  }
+  
+  return result;
+}
+
+// ============ COMPONENTS ============
+
+const styles = {
+  app: { fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif", maxWidth: 440, margin: '0 auto', padding: '12px 16px', color: 'var(--text-primary, #1a1a1a)', minHeight: '100vh', background: 'var(--bg, transparent)' },
+  header: { textAlign: 'center', marginBottom: 20 },
+  logo: { fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary, #64748b)', marginBottom: 2 },
+  title: { fontSize: 22, fontWeight: 700, margin: '4px 0', color: 'var(--text-primary, #0f172a)' },
+  subtitle: { fontSize: 12, color: 'var(--text-tertiary, #94a3b8)' },
+  step: { marginBottom: 16 },
+  stepLabel: { fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary, #64748b)', marginBottom: 8 },
+  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 },
+  gridFull: { gridColumn: '1 / -1' },
+  btn: (active, color) => ({
+    padding: '10px 12px', borderRadius: 10, border: active ? `2px solid ${color || '#3B82F6'}` : '2px solid var(--border, #e2e8f0)',
+    background: active ? `${color || '#3B82F6'}10` : 'var(--card-bg, #fff)',
+    cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+    boxShadow: active ? `0 0 0 1px ${color || '#3B82F6'}20` : 'none',
+  }),
+  btnLabel: { fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #1a1a1a)' },
+  btnSub: { fontSize: 11, color: 'var(--text-tertiary, #94a3b8)', marginTop: 2 },
+  input: { width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid var(--border, #e2e8f0)', fontSize: 16, fontFamily: 'inherit', background: 'var(--card-bg, #fff)', color: 'var(--text-primary, #1a1a1a)', outline: 'none', boxSizing: 'border-box' },
+  pill: (active) => ({
+    padding: '6px 14px', borderRadius: 20, border: active ? '2px solid #3B82F6' : '2px solid var(--border, #e2e8f0)',
+    background: active ? '#3B82F610' : 'var(--card-bg, #fff)',
+    cursor: 'pointer', fontSize: 12, fontWeight: 500, display: 'inline-block', transition: 'all 0.15s',
+    color: active ? '#3B82F6' : 'var(--text-secondary, #64748b)',
+  }),
+  qtyRow: { display: 'flex', alignItems: 'center', gap: 12 },
+  qtyBtn: { width: 36, height: 36, borderRadius: 8, border: '2px solid var(--border, #e2e8f0)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary, #1a1a1a)' },
+  qtyNum: { fontSize: 20, fontWeight: 700, minWidth: 30, textAlign: 'center' },
+  goBtn: { width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: '#3B82F6', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', marginTop: 12, transition: 'all 0.15s', letterSpacing: '0.02em' },
+  card: (color, borderColor) => ({
+    padding: '14px 16px', borderRadius: 12, background: color, border: `2px solid ${borderColor}`,
+    position: 'relative', flex: 1, minWidth: 0,
+  }),
+  cardLabel: { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.7, marginBottom: 4 },
+  cardPrice: { fontSize: 24, fontWeight: 600, lineHeight: 1.2 },
+  copyBtn: { position: 'absolute', top: 8, right: 8, padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: 10, fontWeight: 600, backdropFilter: 'blur(4px)' },
+  breakdown: { fontSize: 12, color: 'var(--text-tertiary, #94a3b8)', marginTop: 8, lineHeight: 1.5 },
+  warning: { padding: '10px 14px', borderRadius: 10, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 12, color: '#991B1B', marginTop: 8 },
+  backBtn: { padding: '8px 16px', borderRadius: 8, border: '2px solid var(--border, #e2e8f0)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #64748b)', marginBottom: 12 },
+  naCard: { padding: '14px 16px', borderRadius: 12, background: 'var(--card-bg, #f8fafc)', border: '2px solid var(--border, #e2e8f0)', flex: 1, minWidth: 0, textAlign: 'center' },
+  timer: { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 12, background: '#ECFDF5', fontSize: 11, fontWeight: 600, color: '#059669', marginTop: 4 },
+};
+
+function RateLookupApp() {
+  const [collection, setCollection] = useState(null);
+  const [postcode, setPostcode] = useState('');
+  const [palletSize, setPalletSize] = useState('8x4');
+  const [qty, setQty] = useState(1);
+  const [weight, setWeight] = useState('');
+  const [selectedSurcharges, setSelectedSurcharges] = useState([]);
+  const [result, setResult] = useState(null);
+  const [copied, setCopied] = useState(null);
+  const [startTime, setStartTime] = useState(null);
+  const [elapsed, setElapsed] = useState(null);
+  const postcodeRef = useRef(null);
+
+  useEffect(() => {
+    if (collection && postcodeRef.current) postcodeRef.current.focus();
+  }, [collection]);
+
+  const haulier = useMemo(() => {
+    const cp = COLLECTION_POINTS.find(c => c.id === collection);
+    return cp ? cp.haulier : null;
+  }, [collection]);
+
+  const handleCollectionSelect = (id) => {
+    setCollection(id);
+    setResult(null);
+    if (!startTime) setStartTime(Date.now());
+  };
+
+  const toggleSurcharge = (id) => {
+    setSelectedSurcharges(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
+  };
+
+  const canCalculate = collection && postcode.length >= 2;
+
+  const doCalculate = () => {
+    if (!canCalculate) return;
+    const w = weight ? parseInt(weight) : 500;
+    const r = calculateRate(haulier, postcode, palletSize, qty, w, selectedSurcharges);
+    setResult(r);
+    if (startTime) {
+      setElapsed(((Date.now() - startTime) / 1000).toFixed(1));
+    }
+  };
+
+  const handleCopy = async (val, which) => {
+    try {
+      await navigator.clipboard.writeText(val.toFixed(2));
+      setCopied(which);
+      setTimeout(() => setCopied(null), 1200);
+    } catch {}
+  };
+
+  const reset = () => {
+    setCollection(null);
+    setPostcode('');
+    setPalletSize('8x4');
+    setQty(1);
+    setWeight('');
+    setSelectedSurcharges([]);
+    setResult(null);
+    setStartTime(null);
+    setElapsed(null);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && canCalculate) doCalculate();
+  };
+
+  const cpColor = COLLECTION_POINTS.find(c => c.id === collection)?.color || '#3B82F6';
+
+  return (
+    <div style={styles.app}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      
+      <div style={styles.header}>
+        <div style={styles.logo}>SPP</div>
+        <div style={styles.title}>Rate Lookup</div>
+        <div style={styles.subtitle}>Fuel surcharge: {(FUEL_SURCHARGE * 100).toFixed(1)}%</div>
+      </div>
+
+      {result ? (
+        <div>
+          <button style={styles.backBtn} onClick={reset}>← New quote</button>
+          
+          {/* Summary pill */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            {[haulier, postcode.toUpperCase(), `${qty}x ${palletSize}`, weight ? `${weight}kg` : '500kg (assumed)', ...selectedSurcharges.map(s => SURCHARGES.find(x => x.id === s)?.label)].filter(Boolean).map((t, i) => (
+              <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: i === 0 ? `${cpColor}15` : 'var(--card-bg, #f1f5f9)', fontSize: 11, fontWeight: 600, color: i === 0 ? cpColor : 'var(--text-secondary, #64748b)', border: `1px solid ${i === 0 ? cpColor + '30' : 'var(--border, #e2e8f0)'}` }}>{t}</span>
+            ))}
+          </div>
+
+          {result.errors.length > 0 ? (
+            <div>
+              {result.errors.map((e, i) => (
+                <div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#FEF2F2', border: '2px solid #EF4444', color: '#991B1B', fontSize: 13, fontWeight: 500, marginTop: i > 0 ? 8 : 0, lineHeight: 1.5 }}>
+                  {e}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Zone */}
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary, #94a3b8)', marginBottom: 10 }}>{result.zone}</div>
+              
+              {/* Rate cards */}
+              <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                {result.nd !== null ? (
+                  <div style={styles.card('#E6F1FB', '#85B7EB')}>
+                    <div style={{...styles.cardLabel, color: '#2563EB'}}>Next Day</div>
+                    <div style={{...styles.cardPrice, color: '#1E40AF'}}>£{result.nd.toFixed(2)}</div>
+                    <button style={styles.copyBtn} onClick={() => handleCopy(result.nd, 'nd')}>
+                      {copied === 'nd' ? '✓ Copied' : 'Copy'}
+                    </button>
+                  </div>
+                ) : result.breakdown.ndNote ? (
+                  <div style={styles.naCard}>
+                    <div style={{...styles.cardLabel, color: 'var(--text-tertiary, #94a3b8)'}}>Next Day</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary, #94a3b8)', marginTop: 4 }}>{result.breakdown.ndNote}</div>
+                  </div>
+                ) : null}
+                
+                {result.eco !== null ? (
+                  <div style={styles.card('#E1F5EE', '#5DCAA5')}>
+                    <div style={{...styles.cardLabel, color: '#059669'}}>Economy</div>
+                    <div style={{...styles.cardPrice, color: '#065F46'}}>£{result.eco.toFixed(2)}</div>
+                    <button style={styles.copyBtn} onClick={() => handleCopy(result.eco, 'eco')}>
+                      {copied === 'eco' ? '✓ Copied' : 'Copy'}
+                    </button>
+                  </div>
+                ) : result.breakdown.ecoNote ? (
+                  <div style={styles.naCard}>
+                    <div style={{...styles.cardLabel, color: 'var(--text-tertiary, #94a3b8)'}}>Economy</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary, #94a3b8)', marginTop: 4 }}>{result.breakdown.ecoNote}</div>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Breakdown */}
+              <div style={styles.breakdown}>
+                {result.breakdown.nd && (
+                  <div>ND: £{result.breakdown.nd.base?.toFixed(2)} base{result.breakdown.nd.note ? ` (${result.breakdown.nd.note})` : ''} + £{result.breakdown.nd.surcharges?.toFixed(2)} surcharges + £{result.breakdown.nd.fuel?.toFixed(2)} fuel ({(FUEL_SURCHARGE*100).toFixed(1)}%). Excl. VAT.</div>
+                )}
+                {result.breakdown.eco && (
+                  <div>Eco: £{result.breakdown.eco.base?.toFixed(2)} base{result.breakdown.eco.note ? ` (${result.breakdown.eco.note})` : ''} + £{result.breakdown.eco.surcharges?.toFixed(2)} surcharges + £{result.breakdown.eco.fuel?.toFixed(2)} fuel ({(FUEL_SURCHARGE*100).toFixed(1)}%). Excl. VAT.</div>
+                )}
+              </div>
+
+              {/* Info notes (blue) */}
+              {result.info && result.info.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  {result.info.map((note, i) => (
+                    <div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E40AF', fontSize: 11, marginTop: i > 0 ? 4 : 0, lineHeight: 1.5 }}>
+                      {note}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Warnings (amber for zone conflicts, red for others) */}
+              {result.warnings.map((w, i) => {
+                const isConflict = w.startsWith('Zone conflict:');
+                return (
+                  <div key={i} style={{
+                    padding: '10px 14px', borderRadius: 10, fontSize: 12, marginTop: 8, lineHeight: 1.5,
+                    background: isConflict ? '#FFFBEB' : '#FEF2F2',
+                    border: isConflict ? '2px solid #F59E0B' : '1px solid #FECACA',
+                    color: isConflict ? '#92400E' : '#991B1B',
+                  }}>
+                    {isConflict && <span style={{ fontWeight: 700 }}>⚠ </span>}
+                    {w}
+                  </div>
+                );
+              })}
+              
+              {/* Timer */}
+              {elapsed && (
+                <div style={{ textAlign: 'center', marginTop: 12 }}>
+                  <span style={styles.timer}>⚡ {elapsed}s from first tap</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        <div>
+          {/* Collection point */}
+          <div style={styles.step}>
+            <div style={styles.stepLabel}>Collection point</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {COLLECTION_POINTS.map(cp => (
+                <div key={cp.id} style={styles.btn(collection === cp.id, cp.color)} onClick={() => handleCollectionSelect(cp.id)}>
+                  <div style={styles.btnLabel}>{cp.label}</div>
+                  <div style={styles.btnSub}>{cp.haulier}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {collection && (
+            <>
+              {/* Postcode */}
+              <div style={styles.step}>
+                <div style={styles.stepLabel}>Delivery postcode</div>
+                <input
+                  ref={postcodeRef}
+                  style={styles.input}
+                  value={postcode}
+                  onChange={e => { setPostcode(e.target.value.toUpperCase()); }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="e.g. ME15"
+                  maxLength={8}
+                />
+              </div>
+
+              {/* Pallet size & qty */}
+              <div style={styles.step}>
+                <div style={styles.stepLabel}>Pallet size</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {PALLET_SIZES.map(ps => (
+                    <div key={ps.id} style={styles.pill(palletSize === ps.id)} onClick={() => setPalletSize(ps.id)}>
+                      {ps.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={styles.step}>
+                <div style={styles.stepLabel}>Quantity</div>
+                <div style={styles.qtyRow}>
+                  <button style={styles.qtyBtn} onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
+                  <span style={styles.qtyNum}>{qty}</span>
+                  <button style={styles.qtyBtn} onClick={() => setQty(Math.min(6, qty + 1))}>+</button>
+                </div>
+              </div>
+
+              <div style={styles.step}>
+                <div style={styles.stepLabel}>Weight per pallet (kg) - optional</div>
+                <input
+                  style={{...styles.input, width: 120}}
+                  value={weight}
+                  onChange={e => setWeight(e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={handleKeyDown}
+                  placeholder="500"
+                />
+              </div>
+
+              {/* Surcharges */}
+              <div style={styles.step}>
+                <div style={styles.stepLabel}>Surcharges</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {SURCHARGES.filter(s => !(s.id === 'hand' && haulier === 'CDL')).map(s => (
+                    <div key={s.id} style={styles.pill(selectedSurcharges.includes(s.id))} onClick={() => toggleSurcharge(s.id)}>
+                      {s.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Calculate */}
+              <button
+                style={{...styles.goBtn, opacity: canCalculate ? 1 : 0.4 }}
+                onClick={doCalculate}
+                disabled={!canCalculate}
+              >
+                Get Rate
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<RateLookupApp />);
+  </script>
+</body>
+</html>
