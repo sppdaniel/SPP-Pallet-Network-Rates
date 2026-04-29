@@ -1066,10 +1066,10 @@ function calcImmingham(postcode, lines, handball) {
     const cdlResult = { zone: "Zone " + cdlZone.zone, nd: null, eco: null };
 
     if (cdlNdPerSpace !== "N/A" && cdlNdPerSpace !== "POA" && typeof cdlNdPerSpace === 'number') {
-      cdlResult.nd = +((cdlNdPerSpace * totalSpaces) * (1 + getFuelSurcharge("CDL"))).toFixed(2);
+      cdlResult.nd = +(((cdlNdPerSpace * totalSpaces) + 12) * (1 + getFuelSurcharge("CDL"))).toFixed(2);
     }
     if (cdlEcoPerSpace !== "N/A" && cdlEcoPerSpace !== "POA" && typeof cdlEcoPerSpace === 'number') {
-      cdlResult.eco = +((cdlEcoPerSpace * totalSpaces) * (1 + getFuelSurcharge("CDL"))).toFixed(2);
+      cdlResult.eco = +(((cdlEcoPerSpace * totalSpaces) + 12) * (1 + getFuelSurcharge("CDL"))).toFixed(2);
     }
     result.cdl = cdlResult;
   }
@@ -1339,7 +1339,7 @@ function RateLookupApp() {
                   {cdlIsCheaper && (
                     <div style={{ marginTop: 4, marginBottom: 8, padding: '14px 16px', borderRadius: 12, background: '#ECFDF5', border: '2px solid #059669' }}>
                       <div style={{ fontSize: 15, fontWeight: 700, color: '#065F46', marginBottom: 8 }}>CDL may be cheaper</div>
-                      <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>{immResult.cdl.zone} — 1 x 8x4 = 2 pallet spaces</div>
+                      <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>{immResult.cdl.zone} — 1 x 8x4 = 2 pallet spaces. Includes AM surcharge.</div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         {immResult.cdl.nd !== null && immResult.cdl.nd < immResult.charge && (
                           <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fff', border: '1px solid #A7F3D0', flex: 1 }}>
@@ -1370,7 +1370,7 @@ function RateLookupApp() {
                   {!cdlIsCheaper && showCdlCompare && (
                     <div style={{ marginTop: 8, padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>CDL comparison ({immResult.cdl.zone}, {immResult.breakdown.totalPallets} x 8x4 = {immResult.breakdown.totalPallets * 2} spaces)</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>CDL comparison ({immResult.cdl.zone}, {immResult.breakdown.totalPallets} x 8x4 = {immResult.breakdown.totalPallets * 2} spaces). Includes AM surcharge.</div>
                         <button onClick={() => setShowCdlCompare(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>✕</button>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
