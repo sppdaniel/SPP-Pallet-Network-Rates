@@ -988,20 +988,30 @@ function calcImmingham(postcode, lines, handball) {
 
   let totalActualWeight = 0;
   let totalPallets = 0;
+  let totalHeightMm = 0;
+
   for (const line of lines) {
     if (!line.material || !line.thickness || !line.sheets) continue;
     const mat = IMM_MATERIALS.find(m => m.id === line.material);
     if (!mat) continue;
     totalActualWeight += (line.thickness * mat.w * mat.l * line.sheets * mat.density) / 1000000000;
     totalPallets += (line.pallets || 0);
+    totalHeightMm += (line.sheets * line.thickness);
+
+    // Process mixed pallet sub-lines (share the same pallets)
+    if (line.mixed && line.subLines) {
+      for (const sub of line.subLines) {
+        if (!sub.material || !sub.thickness || !sub.sheets) continue;
+        const subMat = IMM_MATERIALS.find(m => m.id === sub.material);
+        if (!subMat) continue;
+        totalActualWeight += (sub.thickness * subMat.w * subMat.l * sub.sheets * subMat.density) / 1000000000;
+        totalHeightMm += (sub.sheets * sub.thickness);
+      }
+    }
+    // Add pallet allowance for this line's pallets
+    totalHeightMm += ((line.pallets || 0) * 160);
   }
   totalActualWeight += totalPallets * 20;
-
-  let totalHeightMm = 0;
-  for (const line of lines) {
-    if (!line.material || !line.thickness || !line.sheets) continue;
-    totalHeightMm += (line.sheets * line.thickness) + ((line.pallets || 0) * 160);
-  }
   const totalStacks = totalHeightMm > 0 ? Math.ceil(totalHeightMm / 2000) : 0;
   const footprintM2 = (2440 / 1000) * (1220 / 1000);
   const volWeight = (footprintM2 / 2.4) * 2000 * totalStacks;
@@ -1091,7 +1101,7 @@ function RateLookupApp() {
   const [elapsed, setElapsed] = useState(null);
   const postcodeRef = useRef(null);
   const [immPostcode, setImmPostcode] = useState('');
-  const [immLines, setImmLines] = useState([{material:'',thickness:'',pallets:'',sheets:''}]);
+  const [immLines, setImmLines] = useState([{material:'',thickness:'',pallets:'',sheets:'',mixed:false,subLines:[]}]);
   const [immHandball, setImmHandball] = useState(false);
   const [immResult, setImmResult] = useState(null);
   const [immCopied, setImmCopied] = useState(false);
@@ -1112,12 +1122,16 @@ function RateLookupApp() {
   const cpColor = COLLECTION_POINTS.find(c => c.id === collection)?.color || '#537044';
 
   const updateImmLine = (idx, field, value) => { setImmLines(prev => { const next = [...prev]; next[idx] = { ...next[idx], [field]: value }; return next; }); };
+  const toggleMixed = (idx) => { setImmLines(prev => { const next = [...prev]; const wasMixed = next[idx].mixed; next[idx] = { ...next[idx], mixed: !wasMixed, subLines: !wasMixed ? [{material:'',thickness:'',sheets:''}] : [] }; return next; }); };
+  const addSubLine = (idx) => { setImmLines(prev => { const next = [...prev]; next[idx] = { ...next[idx], subLines: [...next[idx].subLines, {material:'',thickness:'',sheets:''}] }; return next; }); };
+  const updateSubLine = (idx, subIdx, field, value) => { setImmLines(prev => { const next = [...prev]; const subs = [...next[idx].subLines]; subs[subIdx] = { ...subs[subIdx], [field]: value }; next[idx] = { ...next[idx], subLines: subs }; return next; }); };
+  const removeSubLine = (idx, subIdx) => { setImmLines(prev => { const next = [...prev]; const subs = next[idx].subLines.filter((_, i) => i !== subIdx); next[idx] = { ...next[idx], subLines: subs, mixed: subs.length > 0 }; return next; }); };
   const doImmCalc = () => {
     // Check for Rate on Request postcodes (user selects zone, but we can't check postcode here -- zone 6 has the ROR areas)
     const lines = immLines.map(l => ({ material: l.material, thickness: l.thickness ? parseFloat(l.thickness) : 0, pallets: l.pallets ? parseInt(l.pallets) : 0, sheets: l.sheets ? parseInt(l.sheets) : 0 }));
     setImmResult(calcImmingham(immPostcode, lines, immHandball));
   };
-  const resetImm = () => { setImmPostcode(''); setImmHandball(false); setImmResult(null); setImmLines([{material:'',thickness:'',pallets:'',sheets:''}]); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); };
+  const resetImm = () => { setImmPostcode(''); setImmHandball(false); setImmResult(null); setImmLines([{material:'',thickness:'',pallets:'',sheets:'',mixed:false,subLines:[]}]); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); };
   const handleImmCopy = async (val) => { try { await navigator.clipboard.writeText(val.toFixed(2)); setImmCopied(true); setTimeout(() => setImmCopied(false), 1200); } catch {} };
 
   const tabStyle = (active) => ({ flex: 1, padding: '10px 0', textAlign: 'center', fontSize: 17, fontWeight: 600, color: active ? '#537044' : 'var(--text-tertiary, #94a3b8)', cursor: 'pointer', background: 'none', border: 'none', borderBottom: active ? '3px solid #537044' : '3px solid transparent', transition: 'all 0.15s' });
@@ -1433,16 +1447,21 @@ function RateLookupApp() {
                 <div key={idx} style={{ ...styles.step, padding: '14px', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)', background: 'var(--card-bg, #fff)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: '#475569' }}>Product {idx + 1}</div>
-                    {immLines.length > 1 && <button onClick={() => setImmLines(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>✕ Remove</button>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 13, color: '#475569' }}>
+                        <span>Mixed pallet?</span>
+                        <input type="checkbox" checked={line.mixed || false} onChange={() => toggleMixed(idx)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                      </label>
+                      {immLines.length > 1 && <button onClick={() => setImmLines(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>✕</button>}
+                    </div>
                   </div>
 
-                  {/* Material dropdown */}
+                  {/* Main material line */}
                   <select style={{...selectStyle, marginBottom: 10}} value={line.material} onChange={e => updateImmLine(idx, 'material', e.target.value)}>
                     <option value="">Select material</option>
                     {IMM_MATERIALS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
                   </select>
 
-                  {/* Sheets and thickness - side by side, always visible after material selected */}
                   {line.material && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                       <div>
@@ -1456,9 +1475,38 @@ function RateLookupApp() {
                     </div>
                   )}
 
-                  {/* Pallets - appears after sheets and thickness filled */}
+                  {/* Mixed pallet sub-lines */}
+                  {line.mixed && line.subLines && line.subLines.map((sub, subIdx) => (
+                    <div key={subIdx} style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 10, marginTop: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>+ Also on this pallet</div>
+                        <button onClick={() => removeSubLine(idx, subIdx)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#94a3b8' }}>✕</button>
+                      </div>
+                      <select style={{...selectStyle, marginBottom: 8}} value={sub.material} onChange={e => updateSubLine(idx, subIdx, 'material', e.target.value)}>
+                        <option value="">Select material</option>
+                        {IMM_MATERIALS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                      </select>
+                      {sub.material && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 13, color: '#475569', fontWeight: 500, marginBottom: 3 }}>Total sheets</div>
+                            <input style={smallInput} value={sub.sheets} onChange={e => updateSubLine(idx, subIdx, 'sheets', e.target.value.replace(/\D/g, ''))} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 13, color: '#475569', fontWeight: 500, marginBottom: 3 }}>Thickness (mm)</div>
+                            <input style={smallInput} value={sub.thickness} onChange={e => updateSubLine(idx, subIdx, 'thickness', e.target.value.replace(/[^\d.]/g, ''))} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {line.mixed && (
+                    <button onClick={() => addSubLine(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#537044', padding: '8px 0 2px', width: '100%', textAlign: 'center' }}>+ Add another material to this pallet</button>
+                  )}
+
+                  {/* Pallets - appears after main line sheets and thickness filled */}
                   {line.material && line.sheets && line.thickness && (
-                    <div style={{ padding: '10px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ padding: '10px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', marginTop: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
                         <span style={{ color: '#475569', fontWeight: 500 }}>Packed on</span>
                         <input style={{...smallInput, width: 52}} value={line.pallets} onChange={e => updateImmLine(idx, 'pallets', e.target.value.replace(/\D/g, ''))} />
@@ -1471,7 +1519,7 @@ function RateLookupApp() {
 
               {/* Add another product */}
               <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                <button onClick={() => setImmLines(prev => [...prev, {material:'',thickness:'',pallets:'',sheets:''}])} style={{ background: 'none', border: '1px dashed #537044', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 600, color: '#537044', cursor: 'pointer', width: '100%' }}>+ Add another product</button>
+                <button onClick={() => setImmLines(prev => [...prev, {material:'',thickness:'',pallets:'',sheets:'',mixed:false,subLines:[]}])} style={{ background: 'none', border: '1px dashed #537044', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 600, color: '#537044', cursor: 'pointer', width: '100%' }}>+ Add another product</button>
               </div>
 
               <div style={styles.step}><div style={styles.pill(immHandball)} onClick={() => setImmHandball(!immHandball)}>Handball (£20 per consignment)</div></div>
