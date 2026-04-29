@@ -1328,66 +1328,51 @@ function RateLookupApp() {
 
               {/* CDL Comparison */}
               {immResult.cdl && immResult.charge && (() => {
-                const cdlIsCheaper = immResult.breakdown.totalPallets === 1 && (
-                  (immResult.cdl.nd !== null && immResult.cdl.nd < immResult.charge) ||
-                  (immResult.cdl.eco !== null && immResult.cdl.eco < immResult.charge)
+                const isSinglePallet = immResult.breakdown.totalPallets === 1;
+                const ndCheaper = immResult.cdl.nd !== null && immResult.cdl.nd < immResult.charge;
+                const ecoCheaper = immResult.cdl.eco !== null && immResult.cdl.eco < immResult.charge;
+                const bothCheaper = isSinglePallet && ndCheaper && ecoCheaper;
+                const oneCheaper = isSinglePallet && (ndCheaper || ecoCheaper) && !bothCheaper;
+                const anyCheaper = bothCheaper || oneCheaper;
+
+                const cdlCard = (service, rate, isCheaper) => (
+                  <div style={{ padding: '10px 14px', borderRadius: 10, background: anyCheaper ? '#fff' : '#EDF5EB', border: anyCheaper ? '1px solid #A7F3D0' : '1px solid #8FB585', flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#537044', textTransform: 'uppercase' }}>CDL {service}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: anyCheaper ? '#065F46' : '#3D5332' }}>£{rate.toFixed(2)}</div>
+                    <div style={{ fontSize: 12, color: isCheaper ? '#059669' : '#991B1B', fontWeight: 600, marginTop: 2 }}>{isCheaper ? '£'+(immResult.charge - rate).toFixed(2)+' cheaper' : '£'+(rate - immResult.charge).toFixed(2)+' more'}</div>
+                  </div>
                 );
-                const showCdl = cdlIsCheaper || showCdlCompare;
                 
                 return (<>
-                  {/* Auto-show prominent callout when CDL is cheaper + 1 pallet */}
-                  {cdlIsCheaper && (
+                  {/* Auto-show when at least one CDL service is cheaper + 1 pallet */}
+                  {anyCheaper && (
                     <div style={{ marginTop: 4, marginBottom: 8, padding: '14px 16px', borderRadius: 12, background: '#ECFDF5', border: '2px solid #059669' }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: '#065F46', marginBottom: 8 }}>CDL may be cheaper</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#065F46', marginBottom: 8 }}>{bothCheaper ? 'CDL is cheaper' : 'CDL may be cheaper'}</div>
                       <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>{immResult.cdl.zone} — 1 x 8x4 = 2 pallet spaces. Includes AM surcharge.</div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        {immResult.cdl.nd !== null && immResult.cdl.nd < immResult.charge && (
-                          <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fff', border: '1px solid #A7F3D0', flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#537044', textTransform: 'uppercase' }}>CDL Next Day</div>
-                            <div style={{ fontSize: 20, fontWeight: 700, color: '#065F46' }}>£{immResult.cdl.nd.toFixed(2)}</div>
-                            <div style={{ fontSize: 13, color: '#059669', fontWeight: 700, marginTop: 2 }}>£{(immResult.charge - immResult.cdl.nd).toFixed(2)} cheaper</div>
-                          </div>
-                        )}
-                        {immResult.cdl.eco !== null && immResult.cdl.eco < immResult.charge && (
-                          <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fff', border: '1px solid #A7F3D0', flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#537044', textTransform: 'uppercase' }}>CDL Economy</div>
-                            <div style={{ fontSize: 20, fontWeight: 700, color: '#065F46' }}>£{immResult.cdl.eco.toFixed(2)}</div>
-                            <div style={{ fontSize: 13, color: '#059669', fontWeight: 700, marginTop: 2 }}>£{(immResult.charge - immResult.cdl.eco).toFixed(2)} cheaper</div>
-                          </div>
-                        )}
+                        {immResult.cdl.nd !== null && cdlCard('Next Day', immResult.cdl.nd, ndCheaper)}
+                        {immResult.cdl.eco !== null && cdlCard('Economy', immResult.cdl.eco, ecoCheaper)}
                       </div>
                     </div>
                   )}
 
-                  {/* Manual toggle when criteria not met */}
-                  {!cdlIsCheaper && !showCdlCompare && (
+                  {/* Manual toggle when no CDL service is cheaper */}
+                  {!anyCheaper && !showCdlCompare && (
                     <div style={{ textAlign: 'center', marginTop: 8 }}>
                       <button onClick={() => setShowCdlCompare(true)} style={{ background: 'none', border: '1px solid #537044', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#537044', cursor: 'pointer' }}>Show CDL rate for comparison</button>
                     </div>
                   )}
 
                   {/* Manual comparison view */}
-                  {!cdlIsCheaper && showCdlCompare && (
+                  {!anyCheaper && showCdlCompare && (
                     <div style={{ marginTop: 8, padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>CDL comparison ({immResult.cdl.zone}, {immResult.breakdown.totalPallets} x 8x4 = {immResult.breakdown.totalPallets * 2} spaces). Includes AM surcharge.</div>
                         <button onClick={() => setShowCdlCompare(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>✕</button>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        {immResult.cdl.nd !== null && (
-                          <div style={{ padding: '10px 14px', borderRadius: 10, background: '#EDF5EB', border: '1px solid #8FB585', flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#537044', textTransform: 'uppercase' }}>CDL Next Day</div>
-                            <div style={{ fontSize: 18, fontWeight: 700, color: '#3D5332' }}>£{immResult.cdl.nd.toFixed(2)}</div>
-                            <div style={{ fontSize: 12, color: immResult.cdl.nd < immResult.charge ? '#059669' : '#991B1B', fontWeight: 600, marginTop: 2 }}>{immResult.cdl.nd < immResult.charge ? '£'+(immResult.charge - immResult.cdl.nd).toFixed(2)+' cheaper' : '£'+(immResult.cdl.nd - immResult.charge).toFixed(2)+' more'}</div>
-                          </div>
-                        )}
-                        {immResult.cdl.eco !== null && (
-                          <div style={{ padding: '10px 14px', borderRadius: 10, background: '#EDF5EB', border: '1px solid #8FB585', flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#537044', textTransform: 'uppercase' }}>CDL Economy</div>
-                            <div style={{ fontSize: 18, fontWeight: 700, color: '#3D5332' }}>£{immResult.cdl.eco.toFixed(2)}</div>
-                            <div style={{ fontSize: 12, color: immResult.cdl.eco < immResult.charge ? '#059669' : '#991B1B', fontWeight: 600, marginTop: 2 }}>{immResult.cdl.eco < immResult.charge ? '£'+(immResult.charge - immResult.cdl.eco).toFixed(2)+' cheaper' : '£'+(immResult.cdl.eco - immResult.charge).toFixed(2)+' more'}</div>
-                          </div>
-                        )}
+                        {immResult.cdl.nd !== null && cdlCard('Next Day', immResult.cdl.nd, ndCheaper)}
+                        {immResult.cdl.eco !== null && cdlCard('Economy', immResult.cdl.eco, ecoCheaper)}
                         {!immResult.cdl.nd && !immResult.cdl.eco && (
                           <div style={{ padding: '10px', fontSize: 13, color: '#64748b' }}>CDL rates not available for this postcode</div>
                         )}
