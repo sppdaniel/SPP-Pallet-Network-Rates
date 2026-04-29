@@ -1155,7 +1155,7 @@ function RateLookupApp() {
       {tab === 'haulier' ? (
         result ? (
           <div>
-            <button style={styles.backBtn} onClick={reset}>← New quote</button>
+            <button style={styles.backBtn} onClick={() => { setResult(null); setShowCalcs(false); }}>← Edit quote</button>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
               {[haulier, postcode.toUpperCase(), qty+'x '+palletSize, ...palletWeights.filter(w => w).map((w, i) => qty === 1 ? w+'kg' : 'P'+(i+1)+': '+w+'kg'), ...selectedSurcharges.map(s => SURCHARGES.find(x => x.id === s)?.label)].filter(Boolean).map((t, i) => (
                 <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: i === 0 ? cpColor+'15' : 'var(--card-bg, #f1f5f9)', fontSize: 11, fontWeight: 600, color: i === 0 ? cpColor : 'var(--text-secondary, #64748b)', border: '1px solid '+(i === 0 ? cpColor+'30' : 'var(--border, #e2e8f0)') }}>{t}</span>
@@ -1287,7 +1287,7 @@ function RateLookupApp() {
         /* IMMINGHAM TAB */
         immResult ? (
           <div>
-            <button style={styles.backBtn} onClick={resetImm}>← New calculation</button>
+            <button style={styles.backBtn} onClick={() => { setImmResult(null); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); }}>← Edit quote</button>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
               {[immResult.zone, immPostcode.toUpperCase(), immHandball ? 'Handball' : null, ...immLines.filter(l => l.material).map(l => { const mat = IMM_MATERIALS.find(m => m.id === l.material); return mat ? mat.label+' '+l.thickness+'mm x'+l.sheets : null; })].filter(Boolean).map((t, i) => (
                 <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: i === 0 ? '#53704415' : 'var(--card-bg, #f1f5f9)', fontSize: 11, fontWeight: 600, color: i === 0 ? '#537044' : 'var(--text-secondary, #64748b)', border: '1px solid '+(i === 0 ? '#53704430' : 'var(--border, #e2e8f0)') }}>{t}</span>
@@ -1516,6 +1516,11 @@ function RateLookupApp() {
           </div>
         )
       )}
+
+      {/* Footer */}
+      <div style={{ borderTop: '1px solid #e2e8f0', marginTop: 24, paddingTop: 16 }}>
+        <button onClick={() => { reset(); resetImm(); setTab('haulier'); }} style={{ width: '100%', background: '#fff', border: '1px solid #cbd5e1', borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700, color: '#475569', cursor: 'pointer', textAlign: 'center' }}>← Return home</button>
+      </div>
     </div>
   );
 }
