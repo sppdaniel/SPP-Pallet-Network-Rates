@@ -1261,16 +1261,16 @@ function RateLookupApp() {
                       <button style={styles.qtyBtn} onClick={() => { if (palletWeights.length < 6) setPalletWeights(prev => [...prev, '']); }}>+</button>
                     </div>
                   </div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: '#1e293b', marginBottom: 6 }}>Pallet weight - more accurate weight = more accurate quote</div>
                   {palletWeights.length === 1 ? (
                     <div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Total weight (kg) - optional</div>
                       <input style={{...styles.input, width: 140}} value={palletWeights[0]} onChange={e => setPalletWeights([e.target.value.replace(/\D/g, '')])} onKeyDown={handleKeyDown} />
                     </div>
                   ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: palletWeights.length <= 3 ? 'repeat(' + palletWeights.length + ', 1fr)' : 'repeat(3, 1fr)', gap: 6 }}>
                       {palletWeights.map((w, i) => (
                         <div key={i}>
-                          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 3 }}>Pallet {i + 1} (kg)</div>
+                          <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>Pallet {i + 1}</div>
                           <input style={{...styles.input, fontSize: 15, padding: '8px 10px', textAlign: 'center'}} value={w} onChange={e => { const next = [...palletWeights]; next[i] = e.target.value.replace(/\D/g, ''); setPalletWeights(next); }} onKeyDown={handleKeyDown} />
                         </div>
                       ))}
