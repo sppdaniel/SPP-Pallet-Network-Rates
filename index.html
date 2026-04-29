@@ -969,7 +969,7 @@ const IMM_MATERIALS = [
 ];
 
 function calcImmingham(postcode, lines, handball) {
-  const result = { charge: null, breakdown: {}, errors: [], info: [], zone: null, cdl: null };
+  const result = { charge: null, breakdown: {}, errors: [], warnings: [], info: [], zone: null, cdl: null };
   if (!postcode || postcode.length < 2) { result.errors.push("Enter a delivery postcode"); return result; }
 
   // Check Rate on Request
@@ -1002,7 +1002,7 @@ function calcImmingham(postcode, lines, handball) {
     if (!line.material || !line.thickness || !line.sheets) continue;
     totalHeightMm += (line.sheets * line.thickness) + ((line.pallets || 0) * 160);
   }
-  const totalStacks = totalHeightMm > 0 ? Math.ceil(totalHeightMm / 2400) : 0;
+  const totalStacks = totalHeightMm > 0 ? Math.ceil(totalHeightMm / 2000) : 0;
   const footprintM2 = (2440 / 1000) * (1220 / 1000);
   const volWeight = (footprintM2 / 2.4) * 2000 * totalStacks;
 
@@ -1017,7 +1017,7 @@ function calcImmingham(postcode, lines, handball) {
   if (!rates || bracketIdx === -1) { result.errors.push("Rate lookup failed"); return result; }
 
   const baseRate = rates[bracketIdx];
-  const handballCharge = handball ? 20 * totalPallets : 0;
+  const handballCharge = handball ? 20 : 0;
   const totalBeforeFuel = baseRate + handballCharge;
   const total = +(totalBeforeFuel * (1 + IMM_FUEL)).toFixed(2);
 
@@ -1032,7 +1032,15 @@ function calcImmingham(postcode, lines, handball) {
   if (volWeight > totalActualWeight) {
     result.info.push("Volumetric weight (" + volWeight.toFixed(0) + "kg) exceeds actual weight (" + totalActualWeight.toFixed(0) + "kg). Charged on volumetric.");
   }
-  result.info.push("Height: " + totalHeightMm.toFixed(0) + "mm across " + totalStacks + " stack" + (totalStacks !== 1 ? "s" : "") + " (max 2400mm per stack)");
+  result.info.push("Height: " + totalHeightMm.toFixed(0) + "mm across " + totalStacks + " stack" + (totalStacks !== 1 ? "s" : "") + " (max 2000mm per stack)");
+
+  // Stack height warnings
+  const exceedsStackHeight = totalHeightMm > 2000;
+  if (exceedsStackHeight && totalPallets >= 4) {
+    result.warnings.push("HIGHLY recommended: Obtain a quote from Immingham.");
+  } else if (exceedsStackHeight) {
+    result.warnings.push("Recommended: obtain a quote from Immingham. This rate is a best guess and may over-estimate.");
+  }
 
   // CDL comparison: 8x4 = 2 pallet spaces, calculate per-pallet then multiply
   // Try exact postcode first, then fallback with district '1' for bare area codes (e.g. 'ML' -> 'ML1')
@@ -1089,6 +1097,7 @@ function RateLookupApp() {
   const [immCopied, setImmCopied] = useState(false);
   const [showCalcs, setShowCalcs] = useState(false);
   const [showCdlCompare, setShowCdlCompare] = useState(false);
+  const [showImmRate, setShowImmRate] = useState(false);
 
   useEffect(() => { if (collection && postcodeRef.current) postcodeRef.current.focus(); }, [collection]);
   const haulier = useMemo(() => { const cp = COLLECTION_POINTS.find(c => c.id === collection); return cp ? cp.haulier : null; }, [collection]);
@@ -1108,7 +1117,7 @@ function RateLookupApp() {
     const lines = immLines.map(l => ({ material: l.material, thickness: l.thickness ? parseFloat(l.thickness) : 0, pallets: l.pallets ? parseInt(l.pallets) : 0, sheets: l.sheets ? parseInt(l.sheets) : 0 }));
     setImmResult(calcImmingham(immPostcode, lines, immHandball));
   };
-  const resetImm = () => { setImmPostcode(''); setImmHandball(false); setImmResult(null); setImmLines([{material:'',thickness:'',pallets:'',sheets:''}]); setShowCalcs(false); setShowCdlCompare(false); };
+  const resetImm = () => { setImmPostcode(''); setImmHandball(false); setImmResult(null); setImmLines([{material:'',thickness:'',pallets:'',sheets:''}]); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); };
   const handleImmCopy = async (val) => { try { await navigator.clipboard.writeText(val.toFixed(2)); setImmCopied(true); setTimeout(() => setImmCopied(false), 1200); } catch {} };
 
   const tabStyle = (active) => ({ flex: 1, padding: '10px 0', textAlign: 'center', fontSize: 17, fontWeight: 600, color: active ? '#537044' : 'var(--text-tertiary, #94a3b8)', cursor: 'pointer', background: 'none', border: 'none', borderBottom: active ? '3px solid #537044' : '3px solid transparent', transition: 'all 0.15s' });
@@ -1273,9 +1282,35 @@ function RateLookupApp() {
             {immResult.errors.length > 0 ? (
               <div>{immResult.errors.map((e, i) => (<div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#FEF2F2', border: '2px solid #EF4444', color: '#991B1B', fontSize: 14, fontWeight: 500, marginTop: i > 0 ? 8 : 0, lineHeight: 1.5 }}>{e}</div>))}</div>
             ) : (<>
-              <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-                <div style={styles.card('#EDF5EB', '#7A9A68')}><div style={{...styles.cardLabel, color: '#537044'}}>Immingham Charge</div><div style={{...styles.cardPrice, color: '#3D5332'}}>£{immResult.charge.toFixed(2)}</div><button style={styles.copyBtn} onClick={() => handleImmCopy(immResult.charge)}>{immCopied ? '✓' : 'Copy'}</button></div>
-              </div>
+              {/* Charge card - integrated with warnings */}
+              {immResult.warnings && immResult.warnings.length > 0 ? (
+                <div>
+                  {/* Warning card replaces the charge card */}
+                  {immResult.warnings.map((w, i) => {
+                    const isHighly = w.startsWith('HIGHLY');
+                    return (
+                      <div key={i} style={{ padding: '18px 20px', borderRadius: 12, background: isHighly ? '#FEF2F2' : '#FFFBEB', border: isHighly ? '2px solid #EF4444' : '2px solid #F59E0B', marginBottom: 8 }}>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: isHighly ? '#991B1B' : '#92400E', marginBottom: 6 }}>{isHighly ? '⚠ Highly recommended' : 'Recommended'}</div>
+                        <div style={{ fontSize: 14, color: isHighly ? '#991B1B' : '#92400E', lineHeight: 1.6, marginBottom: 12 }}>{isHighly ? 'Obtain a quote from Immingham.' : 'Obtain a quote from Immingham. This rate is a best guess and may over-estimate.'}</div>
+                        {!showImmRate && (
+                          <button onClick={() => setShowImmRate(true)} style={{ background: 'rgba(255,255,255,0.7)', border: isHighly ? '1px solid #FECACA' : '1px solid #FED7AA', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 600, color: isHighly ? '#991B1B' : '#92400E', cursor: 'pointer', width: '100%' }}>Show estimated rate</button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {/* Rate only shows after clicking */}
+                  {showImmRate && (
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                      <div style={styles.card('#EDF5EB', '#7A9A68')}><div style={{...styles.cardLabel, color: '#537044'}}>Estimated charge</div><div style={{...styles.cardPrice, color: '#3D5332'}}>£{immResult.charge.toFixed(2)}</div><button style={styles.copyBtn} onClick={() => handleImmCopy(immResult.charge)}>{immCopied ? '✓' : 'Copy'}</button></div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* No warnings - show charge card directly */
+                <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                  <div style={styles.card('#EDF5EB', '#7A9A68')}><div style={{...styles.cardLabel, color: '#537044'}}>Immingham Charge</div><div style={{...styles.cardPrice, color: '#3D5332'}}>£{immResult.charge.toFixed(2)}</div><button style={styles.copyBtn} onClick={() => handleImmCopy(immResult.charge)}>{immCopied ? '✓' : 'Copy'}</button></div>
+                </div>
+              )}
 
               {/* CDL Comparison */}
               {immResult.cdl && immResult.charge && (() => {
@@ -1363,7 +1398,7 @@ function RateLookupApp() {
                 <div style={{ marginTop: 6 }}>
                   <div style={styles.breakdown}>
                     <div>Actual: {immResult.breakdown.actualWeight}kg | Volumetric: {immResult.breakdown.volWeight}kg | Charged at: {immResult.breakdown.bracketWeight}kg bracket</div>
-                    <div>Base rate: £{immResult.breakdown.baseRate.toFixed(2)}{immResult.breakdown.handballCharge > 0 ? ' + £'+immResult.breakdown.handballCharge.toFixed(2)+' handball ('+immResult.breakdown.totalPallets+' packs x £20)' : ''} + £{immResult.breakdown.fuelCharge} fuel ({(IMM_FUEL*100).toFixed(0)}%). Excl. VAT.</div>
+                    <div>Base rate: £{immResult.breakdown.baseRate.toFixed(2)}{immResult.breakdown.handballCharge > 0 ? ' + £20 handball' : ''} + £{immResult.breakdown.fuelCharge} fuel ({(IMM_FUEL*100).toFixed(0)}%). Excl. VAT.</div>
                   </div>
                   {immResult.info.length > 0 && <div style={{ marginTop: 8 }}>{immResult.info.map((n, i) => (<div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#3D5332', fontSize: 13, marginTop: i > 0 ? 4 : 0, lineHeight: 1.5 }}>{n}</div>))}</div>}
                 </div>
@@ -1439,7 +1474,7 @@ function RateLookupApp() {
                 <button onClick={() => setImmLines(prev => [...prev, {material:'',thickness:'',pallets:'',sheets:''}])} style={{ background: 'none', border: '1px dashed #537044', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 600, color: '#537044', cursor: 'pointer', width: '100%' }}>+ Add another product</button>
               </div>
 
-              <div style={styles.step}><div style={styles.pill(immHandball)} onClick={() => setImmHandball(!immHandball)}>Handball (£20 per pack)</div></div>
+              <div style={styles.step}><div style={styles.pill(immHandball)} onClick={() => setImmHandball(!immHandball)}>Handball (£20 per consignment)</div></div>
               {(() => {
                 const immReady = immLines.some(l => l.material && l.sheets && l.thickness && l.pallets);
                 return <button style={{...styles.goBtn, background: '#537044', opacity: immReady ? 1 : 0.4}} onClick={doImmCalc} disabled={!immReady}>Calculate</button>;
