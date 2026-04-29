@@ -36,43 +36,9 @@
   </style>
 </head>
 <body>
-  <div id="gate" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;">
-    <div style="text-align:center;max-width:320px;width:100%;">
-      <div style="font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary,#64748b);margin-bottom:2px;">SPP</div>
-      <div style="font-size:22px;font-weight:700;color:var(--text-primary,#0f172a);margin-bottom:20px;">Rate Lookup</div>
-      <input id="pw" type="password" placeholder="Enter password" autofocus
-        style="width:100%;padding:12px 16px;border-radius:10px;border:2px solid var(--border,#e2e8f0);font-size:16px;font-family:inherit;background:var(--card-bg,#fff);color:var(--text-primary,#1a1a1a);outline:none;box-sizing:border-box;text-align:center;" />
-      <button id="go" style="width:100%;padding:14px;border-radius:12px;border:none;background:#3B82F6;color:#fff;font-size:16px;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit;">Unlock</button>
-      <div id="err" style="color:#EF4444;font-size:13px;margin-top:10px;display:none;">Wrong password</div>
-    </div>
-  </div>
+  <div id="gate" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;"><div style="text-align:center;max-width:320px;width:100%;"><div style="font-size:15px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#537044;margin-bottom:2px;">SPP</div><div style="font-size:26px;font-weight:700;color:#0f172a;margin-bottom:20px;">Transport Rates</div><input id="pw" type="password" placeholder="Enter password" autofocus style="width:100%;padding:12px 16px;border-radius:10px;border:2px solid #e2e8f0;font-size:17px;font-family:inherit;background:#fff;color:#1e293b;outline:none;box-sizing:border-box;text-align:center;" /><button id="go" style="width:100%;padding:16px;border-radius:12px;border:none;background:#537044;color:#fff;font-size:17px;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit;">Unlock</button><div id="err" style="color:#EF4444;font-size:14px;margin-top:10px;display:none;">Wrong password</div></div></div>
   <div id="root" style="display:none;"></div>
-
-  <script>
-    async function hashPassword(pw) {
-      const data = new TextEncoder().encode(pw);
-      const buf = await crypto.subtle.digest('SHA-256', data);
-      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-    const HASH = 'b687451676426ef42e0fccd585e9b38bd2ff6d308d06f69a9512ea44f8923c7d'; // password set by user
-    async function checkAuth() {
-      const stored = sessionStorage.getItem('spp_auth');
-      if (stored === HASH) { unlock(); return; }
-      document.getElementById('go').onclick = tryPassword;
-      document.getElementById('pw').onkeydown = (e) => { if (e.key === 'Enter') tryPassword(); };
-    }
-    async function tryPassword() {
-      const pw = document.getElementById('pw').value;
-      const h = await hashPassword(pw);
-      if (h === HASH) { sessionStorage.setItem('spp_auth', HASH); unlock(); }
-      else { document.getElementById('err').style.display = 'block'; document.getElementById('pw').value = ''; document.getElementById('pw').focus(); }
-    }
-    function unlock() {
-      document.getElementById('gate').style.display = 'none';
-      document.getElementById('root').style.display = 'block';
-    }
-    checkAuth();
-  </script>
+  <script>async function hashPassword(pw){const d=new TextEncoder().encode(pw);const b=await crypto.subtle.digest('SHA-256',d);return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}const HASH='b687451676426ef42e0fccd585e9b38bd2ff6d308d06f69a9512ea44f8923c7d';async function checkAuth(){if(sessionStorage.getItem('spp_auth')===HASH){unlock();return;}document.getElementById('go').onclick=tryPassword;document.getElementById('pw').onkeydown=(e)=>{if(e.key==='Enter')tryPassword();};}async function tryPassword(){const h=await hashPassword(document.getElementById('pw').value);if(h===HASH){sessionStorage.setItem('spp_auth',HASH);unlock();}else{document.getElementById('err').style.display='block';document.getElementById('pw').value='';document.getElementById('pw').focus();}}function unlock(){document.getElementById('gate').style.display='none';document.getElementById('root').style.display='block';}checkAuth();</script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -205,22 +171,82 @@ const HORIZON_RATES = [
   ["Outer London","BR, CM14,16, CR, DA1-2,5-8,14-18,50, E4, EN, HA, IG, KT1-22, N3,9,12,14,20-21, NW4,7,9, RM1-15,19-20, SE2,20,25,28, SL0,3, SM, SW20, TN14,16, TW, UB, W5,7,13",[84,80.5,72,69,71,68,70,66,68,64,67,63]],
 ];
 
-const FUEL_SURCHARGE = 0.185; // 18.5% as of 23 April 2026
+const FUEL_SURCHARGES = {
+  "CDL": 0.15,
+  "Longs of Leeds": 0.185,
+  "TWA": 0.12,
+  "Horizon (Austin Wilkinson)": 0.15,
+};
+
+function getFuelSurcharge(haulier) {
+  return FUEL_SURCHARGES[haulier] || 0.15;
+}
 
 const COLLECTION_POINTS = [
-  { id: "immingham", label: "Immingham", haulier: "CDL", color: "#3B82F6" },
-  { id: "triesse", label: "Triesse Ltd.", haulier: "Longs of Leeds", color: "#8B5CF6" },
-  { id: "latham", label: "James Latham Leeds", haulier: "Longs of Leeds", color: "#8B5CF6" },
-  { id: "booker", label: "Booker Timber", haulier: "TWA", color: "#F59E0B" },
-  { id: "landmark", label: "Landmark Joinery", haulier: "Horizon", color: "#10B981" },
+  { id: "immingham", label: "Immingham", haulier: "CDL", color: "#537044" },
+  { id: "orlimex", label: "Orlimex - Immingham", haulier: "CDL", color: "#537044" },
+  { id: "triesse", label: "Triesse Ltd.", haulier: "Longs of Leeds", color: "#6B8C5A" },
+  { id: "latham", label: "James Latham Leeds", haulier: "Longs of Leeds", color: "#6B8C5A" },
+  { id: "booker", label: "Booker Timber", haulier: "TWA", color: "#7A9A68" },
+  { id: "landmark", label: "Landmark Joinery", haulier: "Horizon (Austin Wilkinson)", color: "#4A6340" },
 ];
 
 const PALLET_SIZES = [
-  { id: "8x4", label: "8x4", spaces: 2, dims: "2440 x 1220mm" },
-  { id: "5x5", label: "5x5", spaces: 4, dims: "1525 x 1525mm" },
-  { id: "5x10", label: "5x10", spaces: 6, dims: "3050 x 1525mm" },
-  { id: "std", label: "Standard", spaces: 1, dims: "1200 x 1200mm" },
+  { id: "8x4", label: "8x4", spaces: 2, dims: "2440 x 1220mm", w: 2440, l: 1220 },
+  { id: "4x4", label: "4x4", spaces: 1, dims: "1220 x 1220mm", w: 1220, l: 1220 },
+  { id: "5x5", label: "5x5", spaces: 4, dims: "1525 x 1525mm", w: 1525, l: 1525 },
+  { id: "10x4", label: "10x4", spaces: 3, dims: "3050 x 1220mm", w: 3050, l: 1220 },
+  { id: "10x5", label: "10x5", spaces: 6, dims: "3050 x 1525mm", w: 3050, l: 1525 },
+  { id: "custom", label: "Custom", spaces: 0, dims: "custom", w: 0, l: 0 },
 ];
+
+// Calculate pallet spaces from dimensions
+function calcPalletSpaces(wMm, lMm) {
+  // Standard pallet footprint is 1200x1200mm = 1 space
+  // Spaces = ceil(w/1220) * ceil(l/1220), roughly
+  // But hauliers use specific rules, so use area-based approach:
+  // 1 space = 1.2m x 1.2m = 1.44m2. Spaces = ceil(area / 1.44)
+  // More practically: longest side / 1220 rounded up, times shortest / 1220 rounded up
+  const w = Math.max(wMm, lMm);
+  const l = Math.min(wMm, lMm);
+  return Math.ceil(w / 1220) * Math.ceil(l / 1220);
+}
+
+// Get oversized multiplier for custom dims on TWA/Horizon
+function getCustomOversizeInfo(wMm, lMm, haulier) {
+  // Use the oversized matrix: width (shorter side) x length (longer side) in cm
+  const widthCm = Math.min(wMm, lMm) / 10;
+  const lengthCm = Math.max(wMm, lMm) / 10;
+  
+  // TWA matrix breakpoints
+  const twaWidthBands = [[0,12,0],[12.1,15,0.25],[15.1,18,0.50],[18.1,21,0.75],[21.1,24,1.0]];
+  const twaLengthBands = [[0,12,0],[12.1,15,0.25],[15.1,18,0.50],[18.1,21,0.75],[21.1,24,1.0],[24.1,27,1.25],[27.1,30,1.50],[30.1,33,1.75],[33.1,36,2.0],[36.1,39,2.25],[39.1,42,2.50],[42.1,45,2.75],[45.1,48,3.0],[48.1,51,3.25]];
+  
+  // Horizon matrix breakpoints (wider width bands)
+  const hzWidthBands = [[0,12,0],[12.1,16,0.25],[16.1,18,0.50],[18.1,21,0.75],[21.1,24,1.0]];
+  const hzLengthBands = twaLengthBands; // Same length bands
+  
+  const isHorizon = haulier.startsWith("Horizon");
+  const widthBands = isHorizon ? hzWidthBands : twaWidthBands;
+  const lengthBands = isHorizon ? hzLengthBands : twaLengthBands;
+  
+  let wPct = null, lPct = null;
+  for (const [lo, hi, pct] of widthBands) {
+    if (widthCm >= lo && widthCm <= hi) { wPct = pct; break; }
+  }
+  for (const [lo, hi, pct] of lengthBands) {
+    if (lengthCm >= lo && lengthCm <= hi) { lPct = pct; break; }
+  }
+  
+  if (wPct === null || lPct === null) return null; // N/A
+  
+  const totalPct = wPct + lPct;
+  if (totalPct === 0) return { multiplier: 1.0, label: "Standard rate", note: "Within standard dims" };
+  
+  const multiplier = 1 + totalPct;
+  const label = "STR + " + Math.round(totalPct * 100) + "%";
+  return { multiplier, label, note: widthCm.toFixed(0) + "x" + lengthCm.toFixed(0) + "cm" };
+}
 
 const SURCHARGES = [
   { id: "am", label: "AM Delivery" },
@@ -424,44 +450,77 @@ function getPalletWeightType(weight) {
 }
 
 function getPalletTypeIndex(weight, height) {
-  // MP=0, QP=1, HP=2, LFP=3, FP=4
-  if (weight <= 150 && (!height || height <= 0.6)) return 0;
-  if (weight <= 300 && (!height || height <= 0.8)) return 1;
-  if (weight <= 600 && (!height || height <= 1.2)) return 2;
-  if (weight <= 600 && (!height || height <= 2.2)) return 3;
-  if (weight <= 1200) return 4;
+  // MP=0, QP=1, HP=2, LFP=3, FP=4, FP+=5
+  // Without height info, use weight alone:
+  // <=150kg = Micro, <=300kg = Quarter, <=600kg = Full (not Half, since we can't distinguish without height)
+  // <=1200kg = Full, >1200kg = Full Plus
+  if (height) {
+    // With height we can be precise
+    if (weight <= 150 && height <= 0.6) return 0;
+    if (weight <= 300 && height <= 0.8) return 1;
+    if (weight <= 600 && height <= 1.2) return 2;
+    if (weight <= 600 && height <= 2.2) return 3;
+    if (weight <= 1200) return 4;
+    return 5;
+  }
+  // Without height, default conservatively
+  if (weight <= 150) return 0;
+  if (weight <= 300) return 1;
+  if (weight <= 1200) return 4; // Full Pallet
   return 5; // Full Plus
 }
 
 // Oversized multipliers from the surcharge matrices
 // TWA matrix: width rows (120 | 121-150 | 151-180 | 181-210 | 211-240) x length cols
 // Horizon matrix: width rows (120 | 121-160 | 161-180 | 181-210 | 211-240) x length cols
-// 8x4: 2440x1220mm -> use 121-150 width row for buffer -> STR + 125%
+// 8x4: 2440x1220mm -> STR + 100%
 // 5x5: 1525x1525mm = 153x153cm
 //   TWA: 151-180 x 151-180 = STR + 100%
 //   Horizon: 121-160 x 121-160 = Rate + 50%
 // 5x10: 3050x1525mm = 305x153cm
 //   TWA: 151-180 x 301-330 = N/A
 //   Horizon: 121-160 x 301-330 = Rate + 200%
-function getOversizeInfo(palletSize, haulier) {
-  // Returns { multiplier, label, note } or null if N/A
+function getOversizeInfo(palletSize, haulier, customW, customL) {
+  const isHorizon = haulier.startsWith("Horizon");
+  
+  if (palletSize === "custom" && customW && customL) {
+    return getCustomOversizeInfo(customW, customL, haulier);
+  }
   if (palletSize === "8x4") {
-    return { multiplier: 2.25, label: "STR + 125%", note: "8x4 booked as ~240x122cm" };
+    return { multiplier: 2.0, label: "STR + 100%", note: "8x4 at 244x122cm" };
+  }
+  if (palletSize === "4x4") {
+    return { multiplier: 1.0, label: "Standard rate", note: "4x4 within standard dims" };
   }
   if (palletSize === "5x5") {
     if (haulier === "TWA") return { multiplier: 2.0, label: "STR + 100%", note: "5x5 at 153x153cm" };
-    if (haulier === "Horizon") return { multiplier: 1.5, label: "Rate + 50%", note: "5x5 at 153x153cm (Horizon 121-160 row)" };
+    if (isHorizon) return { multiplier: 1.5, label: "Rate + 50%", note: "5x5 at 153x153cm" };
   }
-  if (palletSize === "5x10") {
-    if (haulier === "TWA") return null; // N/A on TWA matrix
-    if (haulier === "Horizon") return { multiplier: 3.0, label: "Rate + 200%", note: "5x10 at 305x153cm" };
+  if (palletSize === "10x4") {
+    if (haulier === "TWA") return null; // N/A
+    if (isHorizon) return { multiplier: 3.0, label: "Rate + 200%", note: "10x4 at 305x122cm" };
+  }
+  if (palletSize === "10x5") {
+    if (haulier === "TWA") return null; // N/A
+    if (isHorizon) return { multiplier: 3.0, label: "Rate + 200%", note: "10x5 at 305x153cm" };
   }
   return null;
 }
 
-function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges) {
+function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges, customW, customL) {
   const result = { nd: null, eco: null, zone: null, breakdown: {}, warnings: [], errors: [], info: [] };
-  const spaces = palletSize === "8x4" ? 2 : palletSize === "5x5" ? 4 : palletSize === "5x10" ? 6 : 1;
+  const FUEL_SURCHARGE = getFuelSurcharge(haulier);
+  result.fuelPct = (FUEL_SURCHARGE * 100);
+  
+  // Resolve pallet spaces
+  let spaces;
+  if (palletSize === "custom" && customW && customL) {
+    spaces = calcPalletSpaces(customW, customL);
+    result.info.push("Custom dims: " + customW + " x " + customL + "mm = " + spaces + " pallet space" + (spaces !== 1 ? "s" : ""));
+  } else {
+    const ps = PALLET_SIZES.find(p => p.id === palletSize);
+    spaces = ps ? ps.spaces : 1;
+  }
   const isOversized = spaces > 1;
   const typeIdx = getPalletTypeIndex(weightKg);
   
@@ -646,7 +705,7 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges)
       }
     } else {
       // Oversized: look up from matrix
-      const osInfo = getOversizeInfo(palletSize, "TWA");
+      const osInfo = getOversizeInfo(palletSize, "TWA", customW, customL);
       if (!osInfo) {
         result.errors.push(`${palletSize} is N/A on the TWA oversized matrix. Contact TWA for quotation.`);
         return result;
@@ -672,7 +731,7 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges)
       if (ecoCalc) { result.eco = ecoCalc.total; result.breakdown.eco = ecoCalc; }
     }
     
-  } else if (haulier === "Horizon") {
+  } else if (haulier === "Horizon (Austin Wilkinson)") {
     const row = matchHorizonZone(postcode);
     if (!row) { result.errors.push("Postcode not found in Horizon zones"); return result; }
     result.zone = row[0];
@@ -719,7 +778,7 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges)
       else if (ecoBase === null) { result.breakdown.ecoNote = "Economy not available for this zone"; }
     } else {
       // Oversized: look up from matrix
-      const osInfo = getOversizeInfo(palletSize, "Horizon");
+      const osInfo = getOversizeInfo(palletSize, "Horizon (Austin Wilkinson)", customW, customL);
       if (!osInfo) {
         result.errors.push(`${palletSize} is N/A on the Horizon oversized matrix. Contact Horizon for quotation.`);
         return result;
@@ -772,7 +831,7 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges)
       const zoneName = result.zone || '';
       return zoneName === 'Zone LOCAL' || zoneNum <= 3;
     }
-    if (haulier === "Horizon") {
+    if (haulier === "Horizon (Austin Wilkinson)") {
       const zoneName = result.zone || '';
       return zoneName === 'Local' || zoneNum <= 3;
     }
@@ -789,324 +848,574 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges)
 // ============ COMPONENTS ============
 
 const styles = {
-  app: { fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif", maxWidth: 440, margin: '0 auto', padding: '12px 16px', color: 'var(--text-primary, #1a1a1a)', minHeight: '100vh', background: 'var(--bg, transparent)' },
+  app: { fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif", maxWidth: 440, margin: '0 auto', padding: '12px 16px', color: '#1a1a1a', minHeight: '100vh', background: 'var(--bg, transparent)' },
   header: { textAlign: 'center', marginBottom: 20 },
-  logo: { fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary, #64748b)', marginBottom: 2 },
-  title: { fontSize: 22, fontWeight: 700, margin: '4px 0', color: 'var(--text-primary, #0f172a)' },
-  subtitle: { fontSize: 12, color: 'var(--text-tertiary, #94a3b8)' },
+  logo: { fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#537044', marginBottom: 2 },
+  title: { fontSize: 26, fontWeight: 700, margin: '4px 0', color: '#0f172a' },
+  subtitle: { fontSize: 13, color: '#64748b' },
   step: { marginBottom: 16 },
-  stepLabel: { fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary, #64748b)', marginBottom: 8 },
+  stepLabel: { fontSize: 13, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#475569', marginBottom: 8 },
   grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 },
   gridFull: { gridColumn: '1 / -1' },
   btn: (active, color) => ({
-    padding: '10px 12px', borderRadius: 10, border: active ? `2px solid ${color || '#3B82F6'}` : '2px solid var(--border, #e2e8f0)',
-    background: active ? `${color || '#3B82F6'}10` : 'var(--card-bg, #fff)',
+    padding: '12px 14px', borderRadius: 10, border: active ? `2px solid ${color || '#537044'}` : '2px solid var(--border, #e2e8f0)',
+    background: active ? `${color || '#537044'}10` : 'var(--card-bg, #fff)',
     cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
-    boxShadow: active ? `0 0 0 1px ${color || '#3B82F6'}20` : 'none',
+    boxShadow: active ? `0 0 0 1px ${color || '#537044'}20` : 'none',
   }),
-  btnLabel: { fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #1a1a1a)' },
-  btnSub: { fontSize: 11, color: 'var(--text-tertiary, #94a3b8)', marginTop: 2 },
-  input: { width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid var(--border, #e2e8f0)', fontSize: 16, fontFamily: 'inherit', background: 'var(--card-bg, #fff)', color: 'var(--text-primary, #1a1a1a)', outline: 'none', boxSizing: 'border-box' },
+  btnLabel: { fontSize: 16, fontWeight: 600, color: '#1e293b' },
+  btnSub: { fontSize: 13, color: '#64748b', marginTop: 2 },
+  input: { width: '100%', padding: '12px 14px', borderRadius: 10, border: '2px solid var(--border, #e2e8f0)', fontSize: 17, fontFamily: 'inherit', background: 'var(--card-bg, #fff)', color: '#1e293b', outline: 'none', boxSizing: 'border-box' },
   pill: (active) => ({
-    padding: '6px 14px', borderRadius: 20, border: active ? '2px solid #3B82F6' : '2px solid var(--border, #e2e8f0)',
-    background: active ? '#3B82F610' : 'var(--card-bg, #fff)',
-    cursor: 'pointer', fontSize: 12, fontWeight: 500, display: 'inline-block', transition: 'all 0.15s',
-    color: active ? '#3B82F6' : 'var(--text-secondary, #64748b)',
+    padding: '8px 16px', borderRadius: 20, border: active ? '2px solid #537044' : '2px solid var(--border, #e2e8f0)',
+    background: active ? '#53704412' : 'var(--card-bg, #fff)',
+    cursor: 'pointer', fontSize: 14, fontWeight: 500, display: 'inline-block', transition: 'all 0.15s',
+    color: active ? '#537044' : '#475569',
   }),
   qtyRow: { display: 'flex', alignItems: 'center', gap: 12 },
-  qtyBtn: { width: 36, height: 36, borderRadius: 8, border: '2px solid var(--border, #e2e8f0)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary, #1a1a1a)' },
-  qtyNum: { fontSize: 20, fontWeight: 700, minWidth: 30, textAlign: 'center' },
-  goBtn: { width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: '#3B82F6', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', marginTop: 12, transition: 'all 0.15s', letterSpacing: '0.02em' },
+  qtyBtn: { width: 40, height: 40, borderRadius: 8, border: '2px solid var(--border, #e2e8f0)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontSize: 20, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1e293b' },
+  qtyNum: { fontSize: 22, fontWeight: 700, minWidth: 30, textAlign: 'center', color: '#1e293b' },
+  goBtn: { width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: '#537044', color: '#fff', fontSize: 17, fontWeight: 700, cursor: 'pointer', marginTop: 12, transition: 'all 0.15s', letterSpacing: '0.02em' },
   card: (color, borderColor) => ({
-    padding: '14px 16px', borderRadius: 12, background: color, border: `2px solid ${borderColor}`,
+    padding: '16px 18px', borderRadius: 12, background: color, border: `2px solid ${borderColor}`,
     position: 'relative', flex: 1, minWidth: 0,
   }),
-  cardLabel: { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.7, marginBottom: 4 },
-  cardPrice: { fontSize: 24, fontWeight: 600, lineHeight: 1.2 },
-  copyBtn: { position: 'absolute', top: 8, right: 8, padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: 10, fontWeight: 600, backdropFilter: 'blur(4px)' },
-  breakdown: { fontSize: 12, color: 'var(--text-tertiary, #94a3b8)', marginTop: 8, lineHeight: 1.5 },
-  warning: { padding: '10px 14px', borderRadius: 10, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 12, color: '#991B1B', marginTop: 8 },
-  backBtn: { padding: '8px 16px', borderRadius: 8, border: '2px solid var(--border, #e2e8f0)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #64748b)', marginBottom: 12 },
-  naCard: { padding: '14px 16px', borderRadius: 12, background: 'var(--card-bg, #f8fafc)', border: '2px solid var(--border, #e2e8f0)', flex: 1, minWidth: 0, textAlign: 'center' },
-  timer: { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 12, background: '#ECFDF5', fontSize: 11, fontWeight: 600, color: '#059669', marginTop: 4 },
+  cardLabel: { fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.7, marginBottom: 4 },
+  cardPrice: { fontSize: 28, fontWeight: 600, lineHeight: 1.2 },
+  copyBtn: { position: 'absolute', top: 8, right: 8, padding: '5px 12px', borderRadius: 6, border: '1px solid rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: 12, fontWeight: 600, backdropFilter: 'blur(4px)' },
+  breakdown: { fontSize: 13, color: '#475569', marginTop: 8, lineHeight: 1.6 },
+  warning: { padding: '10px 14px', borderRadius: 10, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 13, color: '#991B1B', marginTop: 8 },
+  backBtn: { padding: '10px 18px', borderRadius: 8, border: '2px solid var(--border, #e2e8f0)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#475569', marginBottom: 12 },
+  naCard: { padding: '16px 18px', borderRadius: 12, background: 'var(--card-bg, #f8fafc)', border: '2px solid var(--border, #e2e8f0)', flex: 1, minWidth: 0, textAlign: 'center' },
+  timer: { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 12px', borderRadius: 12, background: '#EDF5EB', fontSize: 13, fontWeight: 600, color: '#537044', marginTop: 4 },
 };
 
+// ============ IMMINGHAM CALCULATOR ============
+
+const IMM_ZONE_POSTCODES = {
+  "Zone 1": ["DN","HU","LN","YO"],
+  "Zone 2": ["B","BB","BD","BL","CB","CH","CV","CW","DE","DL","DY","HD","HG","HX","L","LE","LS","M","NG","NN","OL","PE","PR","S","SK","ST","TS","WA","WF","WN","WS","WV"],
+  "Zone 3": ["AL","CA","CM","FY","GL","HP","HR","IG","IP","LA","MK","NR","OX","SG","TF","WR"],
+  "Zone 4": ["BR","BS","CF","CO","CR","DA","DG","DH","EN","GU","HA","KT","LD","LL","ME","NE","NP","PO","RG","RH","RM","SL","SM","SN","SR","SS","SY","TW","UB","WD"],
+  "Zone 5": ["BA","BH","BN","CT","DT","EH","FK","G","KA","ML","SA","SO","SP","TD","TN"],
+  "Zone 6": ["AB","DD","EX","IV","KW","KY","PA","PH","PL","TA","TQ","TR"],
+  "London": ["E","EC","N","NW","SE","SW","W","WC"],
+};
+
+// Rate on Request: specific postcodes/ranges within Zone 6
+const IMM_ROR_AREAS = ["IV","KW"];
+const IMM_ROR_RANGES = [
+  {area:"PA",lo:20,hi:999},{area:"PH",lo:23,hi:26},{area:"PH",lo:32,hi:44},
+  {area:"PL",lo:23,hi:999},{area:"KA",lo:27,hi:28},{area:"TR",lo:21,hi:25},
+  {area:"PO",lo:30,hi:41},
+];
+
+function matchImmZone(postcode) {
+  const { area } = extractPostcodeArea(postcode);
+  for (const [zone, areas] of Object.entries(IMM_ZONE_POSTCODES)) {
+    if (areas.includes(area)) return zone;
+  }
+  return null;
+}
+
+function isImmROR(postcode) {
+  const { area, district } = extractPostcodeArea(postcode);
+  if (IMM_ROR_AREAS.includes(area)) return true;
+  for (const r of IMM_ROR_RANGES) {
+    if (r.area === area && district !== null && district >= r.lo && district <= r.hi) return true;
+  }
+  return false;
+}
+
+const IMM_WEIGHT_BRACKETS = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000];
+const IMM_RATES = {
+  "Zone 1": [66.41,108.68,120.75,150.94,169.05,175.09,208.90,229.43,249.95,271.69],
+  "Zone 2": [76.07,118.34,132.83,169.05,187.16,193.20,229.43,253.58,276.52,300.67],
+  "Zone 3": [78.49,124.43,138.86,178.71,199.24,205.28,245.12,270.48,295.84,334.48],
+  "Zone 4": [84.53,126.79,144.90,187.16,211.31,223.39,262.03,289.80,317.57,346.55],
+  "Zone 5": [108.68,150.94,169.05,211.31,235.46,247.54,286.18,313.95,342.93,370.70],
+  "Zone 6": [156.98,229.43,274.84,350.18,410.55,483.00,536.13,597.71,659.30,722.09],
+  "London": [114.71,163.01,211.31,259.61,289.80,319.99,371.91,412.97,455.23,496.28],
+};
+
+const IMM_FUEL = 0.18;
+const IMM_MATERIALS = [
+  { id: "birch8x4", label: "Birch 8x4", density: 720, w: 2440, l: 1220 },
+  { id: "pine8x4", label: "Pine 8x4", density: 689, w: 2440, l: 1220 },
+  { id: "decmaple8x4", label: "Dec Maple 8x4", density: 615, w: 2440, l: 1220 },
+];
+
+function calcImmingham(postcode, lines, handball) {
+  const result = { charge: null, breakdown: {}, errors: [], info: [], zone: null, cdl: null };
+  if (!postcode || postcode.length < 2) { result.errors.push("Enter a delivery postcode"); return result; }
+
+  // Check Rate on Request
+  if (isImmROR(postcode)) {
+    result.errors.push(postcode.toUpperCase() + " is Rate on Request. Contact Immingham directly for a quote.");
+    return result;
+  }
+
+  // Auto-detect zone
+  const zone = matchImmZone(postcode);
+  if (!zone) { result.errors.push("Postcode " + postcode.toUpperCase() + " not found in Immingham zones"); return result; }
+  result.zone = zone;
+
+  const hasLines = lines.some(l => l.material && l.thickness > 0 && l.sheets > 0);
+  if (!hasLines) { result.errors.push("Add at least one material line with thickness and sheets"); return result; }
+
+  let totalActualWeight = 0;
+  let totalPallets = 0;
+  for (const line of lines) {
+    if (!line.material || !line.thickness || !line.sheets) continue;
+    const mat = IMM_MATERIALS.find(m => m.id === line.material);
+    if (!mat) continue;
+    totalActualWeight += (line.thickness * mat.w * mat.l * line.sheets * mat.density) / 1000000000;
+    totalPallets += (line.pallets || 0);
+  }
+  totalActualWeight += totalPallets * 20;
+
+  let totalHeightMm = 0;
+  for (const line of lines) {
+    if (!line.material || !line.thickness || !line.sheets) continue;
+    totalHeightMm += (line.sheets * line.thickness) + ((line.pallets || 0) * 160);
+  }
+  const totalStacks = totalHeightMm > 0 ? Math.ceil(totalHeightMm / 2400) : 0;
+  const footprintM2 = (2440 / 1000) * (1220 / 1000);
+  const volWeight = (footprintM2 / 2.4) * 2000 * totalStacks;
+
+  const chargeableWeight = Math.max(totalActualWeight, volWeight);
+  const bracketWeight = Math.ceil(chargeableWeight / 1000) * 1000;
+
+  if (bracketWeight <= 0) { result.errors.push("Weight calculates to zero. Check your inputs."); return result; }
+  if (bracketWeight > 10000) { result.errors.push("Weight exceeds 10,000kg. Contact Immingham for a quote."); return result; }
+
+  const bracketIdx = IMM_WEIGHT_BRACKETS.indexOf(bracketWeight);
+  const rates = IMM_RATES[zone];
+  if (!rates || bracketIdx === -1) { result.errors.push("Rate lookup failed"); return result; }
+
+  const baseRate = rates[bracketIdx];
+  const handballCharge = handball ? 20 * totalPallets : 0;
+  const totalBeforeFuel = baseRate + handballCharge;
+  const total = +(totalBeforeFuel * (1 + IMM_FUEL)).toFixed(2);
+
+  result.charge = total;
+  result.breakdown = {
+    actualWeight: +totalActualWeight.toFixed(2), volWeight: +volWeight.toFixed(0),
+    chargeableWeight: +chargeableWeight.toFixed(2), bracketWeight,
+    totalHeightMm: +totalHeightMm.toFixed(0), totalStacks, totalPallets,
+    baseRate, handballCharge, fuelCharge: +(totalBeforeFuel * IMM_FUEL).toFixed(2),
+  };
+
+  if (volWeight > totalActualWeight) {
+    result.info.push("Volumetric weight (" + volWeight.toFixed(0) + "kg) exceeds actual weight (" + totalActualWeight.toFixed(0) + "kg). Charged on volumetric.");
+  }
+  result.info.push("Height: " + totalHeightMm.toFixed(0) + "mm across " + totalStacks + " stack" + (totalStacks !== 1 ? "s" : "") + " (max 2400mm per stack)");
+
+  // CDL comparison: 8x4 = 2 pallet spaces, calculate per-pallet then multiply
+  const cdlZone = matchCDLZone(postcode);
+  if (cdlZone) {
+    const totalSpaces = 2 * totalPallets; // 8x4 = 2 spaces each
+    const cdlNdPerSpace = cdlZone.nd;
+    const cdlEcoPerSpace = cdlZone.eco;
+    const cdlResult = { zone: "Zone " + cdlZone.zone, nd: null, eco: null };
+
+    if (cdlNdPerSpace !== "N/A" && cdlNdPerSpace !== "POA" && typeof cdlNdPerSpace === 'number') {
+      cdlResult.nd = +((cdlNdPerSpace * totalSpaces) * (1 + getFuelSurcharge("CDL"))).toFixed(2);
+    }
+    if (cdlEcoPerSpace !== "N/A" && cdlEcoPerSpace !== "POA" && typeof cdlEcoPerSpace === 'number') {
+      cdlResult.eco = +((cdlEcoPerSpace * totalSpaces) * (1 + getFuelSurcharge("CDL"))).toFixed(2);
+    }
+    result.cdl = cdlResult;
+  }
+
+  // Courier viability: ~1.5hrs from Immingham = Zone 1 and Zone 2
+  if (zone === "Zone 1" || zone === "Zone 2") {
+    result.courier = "Destination is close to Immingham. If this job is urgent, it may be worth checking a courier rate.";
+  }
+
+  return result;
+}
+
+// ============ MAIN APP ============
+
 function RateLookupApp() {
+  const [tab, setTab] = useState('haulier');
   const [collection, setCollection] = useState(null);
+  const [showCollectionPicker, setShowCollectionPicker] = useState(true);
   const [postcode, setPostcode] = useState('');
   const [palletSize, setPalletSize] = useState('8x4');
-  const [qty, setQty] = useState(1);
-  const [weight, setWeight] = useState('');
+  const [customW, setCustomW] = useState('');
+  const [customL, setCustomL] = useState('');
+  const [palletWeights, setPalletWeights] = useState(['']);
+  const qty = palletWeights.length;
   const [selectedSurcharges, setSelectedSurcharges] = useState([]);
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(null);
   const [startTime, setStartTime] = useState(null);
   const [elapsed, setElapsed] = useState(null);
   const postcodeRef = useRef(null);
+  const [immPostcode, setImmPostcode] = useState('');
+  const [immLines, setImmLines] = useState([{material:'',thickness:'',pallets:'',sheets:''}]);
+  const [immHandball, setImmHandball] = useState(false);
+  const [immResult, setImmResult] = useState(null);
+  const [immCopied, setImmCopied] = useState(false);
+  const [showCalcs, setShowCalcs] = useState(false);
+  const [showCdlCompare, setShowCdlCompare] = useState(false);
 
-  useEffect(() => {
-    if (collection && postcodeRef.current) postcodeRef.current.focus();
-  }, [collection]);
+  useEffect(() => { if (collection && postcodeRef.current) postcodeRef.current.focus(); }, [collection]);
+  const haulier = useMemo(() => { const cp = COLLECTION_POINTS.find(c => c.id === collection); return cp ? cp.haulier : null; }, [collection]);
 
-  const haulier = useMemo(() => {
-    const cp = COLLECTION_POINTS.find(c => c.id === collection);
-    return cp ? cp.haulier : null;
-  }, [collection]);
-
-  const handleCollectionSelect = (id) => {
-    setCollection(id);
-    setResult(null);
-    if (!startTime) setStartTime(Date.now());
-  };
-
-  const toggleSurcharge = (id) => {
-    setSelectedSurcharges(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
-  };
-
+  const handleCollectionSelect = (id) => { setCollection(id); setResult(null); setShowCollectionPicker(false); if (!startTime) setStartTime(Date.now()); };
+  const toggleSurcharge = (id) => { setSelectedSurcharges(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]); };
   const canCalculate = collection && postcode.length >= 2;
+  const doCalculate = () => { if (!canCalculate) return; const maxWeight = Math.max(...palletWeights.map(w => w ? parseInt(w) : 500)); const r = calculateRate(haulier, postcode, palletSize, qty, maxWeight, selectedSurcharges, customW ? parseInt(customW) : null, customL ? parseInt(customL) : null); setResult(r); if (startTime) setElapsed(((Date.now() - startTime) / 1000).toFixed(1)); };
+  const handleCopy = async (val, which) => { try { await navigator.clipboard.writeText(val.toFixed(2)); setCopied(which); setTimeout(() => setCopied(null), 1200); } catch {} };
+  const reset = () => { setCollection(null); setShowCollectionPicker(true); setPostcode(''); setPalletSize('8x4'); setPalletWeights(['']); setSelectedSurcharges([]); setResult(null); setStartTime(null); setElapsed(null); setCustomW(''); setCustomL(''); setShowCalcs(false); };
+  const handleKeyDown = (e) => { if (e.key === 'Enter' && canCalculate) doCalculate(); };
+  const cpColor = COLLECTION_POINTS.find(c => c.id === collection)?.color || '#537044';
 
-  const doCalculate = () => {
-    if (!canCalculate) return;
-    const w = weight ? parseInt(weight) : 500;
-    const r = calculateRate(haulier, postcode, palletSize, qty, w, selectedSurcharges);
-    setResult(r);
-    if (startTime) {
-      setElapsed(((Date.now() - startTime) / 1000).toFixed(1));
-    }
+  const updateImmLine = (idx, field, value) => { setImmLines(prev => { const next = [...prev]; next[idx] = { ...next[idx], [field]: value }; return next; }); };
+  const doImmCalc = () => {
+    // Check for Rate on Request postcodes (user selects zone, but we can't check postcode here -- zone 6 has the ROR areas)
+    const lines = immLines.map(l => ({ material: l.material, thickness: l.thickness ? parseFloat(l.thickness) : 0, pallets: l.pallets ? parseInt(l.pallets) : 0, sheets: l.sheets ? parseInt(l.sheets) : 0 }));
+    setImmResult(calcImmingham(immPostcode, lines, immHandball));
   };
+  const resetImm = () => { setImmPostcode(''); setImmHandball(false); setImmResult(null); setImmLines([{material:'',thickness:'',pallets:'',sheets:''}]); setShowCalcs(false); setShowCdlCompare(false); };
+  const handleImmCopy = async (val) => { try { await navigator.clipboard.writeText(val.toFixed(2)); setImmCopied(true); setTimeout(() => setImmCopied(false), 1200); } catch {} };
 
-  const handleCopy = async (val, which) => {
-    try {
-      await navigator.clipboard.writeText(val.toFixed(2));
-      setCopied(which);
-      setTimeout(() => setCopied(null), 1200);
-    } catch {}
-  };
-
-  const reset = () => {
-    setCollection(null);
-    setPostcode('');
-    setPalletSize('8x4');
-    setQty(1);
-    setWeight('');
-    setSelectedSurcharges([]);
-    setResult(null);
-    setStartTime(null);
-    setElapsed(null);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && canCalculate) doCalculate();
-  };
-
-  const cpColor = COLLECTION_POINTS.find(c => c.id === collection)?.color || '#3B82F6';
+  const tabStyle = (active) => ({ flex: 1, padding: '10px 0', textAlign: 'center', fontSize: 17, fontWeight: 600, color: active ? '#537044' : 'var(--text-tertiary, #94a3b8)', cursor: 'pointer', background: 'none', border: 'none', borderBottom: active ? '3px solid #537044' : '3px solid transparent', transition: 'all 0.15s' });
+  const selectStyle = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid var(--border, #e2e8f0)', fontSize: 14, fontFamily: 'inherit', background: 'var(--card-bg, #fff)', color: 'var(--text-primary, #1a1a1a)', outline: 'none', boxSizing: 'border-box' };
+  const smallInput = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '2px solid var(--border, #e2e8f0)', fontSize: 14, fontFamily: 'inherit', background: 'var(--card-bg, #fff)', color: 'var(--text-primary, #1a1a1a)', outline: 'none', boxSizing: 'border-box', textAlign: 'center' };
 
   return (
     <div style={styles.app}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-      
       <div style={styles.header}>
         <div style={styles.logo}>SPP</div>
-        <div style={styles.title}>Rate Lookup</div>
-        <div style={styles.subtitle}>Fuel surcharge: {(FUEL_SURCHARGE * 100).toFixed(1)}%</div>
+        <div style={styles.title}>Transport Rates</div>
+        <div style={styles.subtitle}>CDL {(FUEL_SURCHARGES["CDL"]*100).toFixed(0)}% | Longs {(FUEL_SURCHARGES["Longs of Leeds"]*100).toFixed(1)}% | TWA {(FUEL_SURCHARGES["TWA"]*100).toFixed(0)}% | Horizon {(FUEL_SURCHARGES["Horizon (Austin Wilkinson)"]*100).toFixed(0)}% | Imm {(IMM_FUEL*100).toFixed(0)}%</div>
       </div>
 
-      {result ? (
-        <div>
-          <button style={styles.backBtn} onClick={reset}>← New quote</button>
-          
-          {/* Summary pill */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-            {[haulier, postcode.toUpperCase(), `${qty}x ${palletSize}`, weight ? `${weight}kg` : null, ...selectedSurcharges.map(s => SURCHARGES.find(x => x.id === s)?.label)].filter(Boolean).map((t, i) => (
-              <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: i === 0 ? `${cpColor}15` : 'var(--card-bg, #f1f5f9)', fontSize: 11, fontWeight: 600, color: i === 0 ? cpColor : 'var(--text-secondary, #64748b)', border: `1px solid ${i === 0 ? cpColor + '30' : 'var(--border, #e2e8f0)'}` }}>{t}</span>
-            ))}
-          </div>
+      <div style={{ display: 'flex', marginBottom: 16, borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+        <button style={tabStyle(tab === 'haulier')} onClick={() => setTab('haulier')}>Pallet Network</button>
+        <button style={tabStyle(tab === 'immingham')} onClick={() => setTab('immingham')}>Immingham</button>
+      </div>
 
-          {result.errors.length > 0 ? (
-            <div>
-              {result.errors.map((e, i) => (
-                <div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#FEF2F2', border: '2px solid #EF4444', color: '#991B1B', fontSize: 13, fontWeight: 500, marginTop: i > 0 ? 8 : 0, lineHeight: 1.5 }}>
-                  {e}
-                </div>
+      {tab === 'haulier' ? (
+        result ? (
+          <div>
+            <button style={styles.backBtn} onClick={reset}>← New quote</button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {[haulier, postcode.toUpperCase(), qty+'x '+palletSize, ...palletWeights.filter(w => w).map((w, i) => qty === 1 ? w+'kg' : 'P'+(i+1)+': '+w+'kg'), ...selectedSurcharges.map(s => SURCHARGES.find(x => x.id === s)?.label)].filter(Boolean).map((t, i) => (
+                <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: i === 0 ? cpColor+'15' : 'var(--card-bg, #f1f5f9)', fontSize: 11, fontWeight: 600, color: i === 0 ? cpColor : 'var(--text-secondary, #64748b)', border: '1px solid '+(i === 0 ? cpColor+'30' : 'var(--border, #e2e8f0)') }}>{t}</span>
               ))}
             </div>
-          ) : (
-            <>
-              {/* Zone */}
-              <div style={{ fontSize: 12, color: 'var(--text-tertiary, #94a3b8)', marginBottom: 10 }}>{result.zone}</div>
-              
-              {/* Rate cards */}
-              <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-                {result.nd !== null ? (
-                  <div style={styles.card('#E6F1FB', '#85B7EB')}>
-                    <div style={{...styles.cardLabel, color: '#2563EB'}}>Next Day</div>
-                    <div style={{...styles.cardPrice, color: '#1E40AF'}}>£{result.nd.toFixed(2)}</div>
-                    <button style={styles.copyBtn} onClick={() => handleCopy(result.nd, 'nd')}>
-                      {copied === 'nd' ? '✓ Copied' : 'Copy'}
-                    </button>
-                  </div>
-                ) : result.breakdown.ndNote ? (
-                  <div style={styles.naCard}>
-                    <div style={{...styles.cardLabel, color: 'var(--text-tertiary, #94a3b8)'}}>Next Day</div>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary, #94a3b8)', marginTop: 4 }}>{result.breakdown.ndNote}</div>
-                  </div>
-                ) : null}
-                
-                {result.eco !== null ? (
-                  <div style={styles.card('#E1F5EE', '#5DCAA5')}>
-                    <div style={{...styles.cardLabel, color: '#059669'}}>Economy</div>
-                    <div style={{...styles.cardPrice, color: '#065F46'}}>£{result.eco.toFixed(2)}</div>
-                    <button style={styles.copyBtn} onClick={() => handleCopy(result.eco, 'eco')}>
-                      {copied === 'eco' ? '✓ Copied' : 'Copy'}
-                    </button>
-                  </div>
-                ) : result.breakdown.ecoNote ? (
-                  <div style={styles.naCard}>
-                    <div style={{...styles.cardLabel, color: 'var(--text-tertiary, #94a3b8)'}}>Economy</div>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary, #94a3b8)', marginTop: 4 }}>{result.breakdown.ecoNote}</div>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Breakdown */}
-              <div style={styles.breakdown}>
-                {result.breakdown.nd && (
-                  <div>ND: £{result.breakdown.nd.base?.toFixed(2)} base{result.breakdown.nd.note ? ` (${result.breakdown.nd.note})` : ''} + £{result.breakdown.nd.surcharges?.toFixed(2)} surcharges + £{result.breakdown.nd.fuel?.toFixed(2)} fuel ({(FUEL_SURCHARGE*100).toFixed(1)}%). Excl. VAT.</div>
-                )}
-                {result.breakdown.eco && (
-                  <div>Eco: £{result.breakdown.eco.base?.toFixed(2)} base{result.breakdown.eco.note ? ` (${result.breakdown.eco.note})` : ''} + £{result.breakdown.eco.surcharges?.toFixed(2)} surcharges + £{result.breakdown.eco.fuel?.toFixed(2)} fuel ({(FUEL_SURCHARGE*100).toFixed(1)}%). Excl. VAT.</div>
-                )}
-              </div>
-
-              {/* Info notes (blue) */}
-              {result.info && result.info.length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  {result.info.map((note, i) => (
-                    <div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E40AF', fontSize: 11, marginTop: i > 0 ? 4 : 0, lineHeight: 1.5 }}>
-                      {note}
+            {result.errors.length > 0 ? (
+              <div>{result.errors.map((e, i) => (<div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#FEF2F2', border: '2px solid #EF4444', color: '#991B1B', fontSize: 14, fontWeight: 500, marginTop: i > 0 ? 8 : 0, lineHeight: 1.5 }}>{e}</div>))}</div>
+            ) : (
+              <>
+                <div style={{ fontSize: 14, color: '#64748b', marginBottom: 10 }}>{result.zone}</div>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                  {result.nd !== null ? (<div style={styles.card('#EDF5EB', '#8FB585')}><div style={{...styles.cardLabel, color: '#537044'}}>Next Day</div><div style={{...styles.cardPrice, color: '#3D5332'}}>£{result.nd.toFixed(2)}</div><button style={styles.copyBtn} onClick={() => handleCopy(result.nd, 'nd')}>{copied === 'nd' ? '✓' : 'Copy'}</button></div>) : result.breakdown.ndNote ? (<div style={styles.naCard}><div style={{...styles.cardLabel, color: 'var(--text-tertiary)'}}>Next Day</div><div style={{ fontSize: 14, fontWeight: 500, color: '#64748b', marginTop: 4 }}>{result.breakdown.ndNote}</div></div>) : null}
+                  {result.eco !== null ? (<div style={styles.card('#E1F5EE', '#5DCAA5')}><div style={{...styles.cardLabel, color: '#059669'}}>Economy</div><div style={{...styles.cardPrice, color: '#065F46'}}>£{result.eco.toFixed(2)}</div><button style={styles.copyBtn} onClick={() => handleCopy(result.eco, 'eco')}>{copied === 'eco' ? '✓' : 'Copy'}</button></div>) : result.breakdown.ecoNote ? (<div style={styles.naCard}><div style={{...styles.cardLabel, color: 'var(--text-tertiary)'}}>Economy</div><div style={{ fontSize: 14, fontWeight: 500, color: '#64748b', marginTop: 4 }}>{result.breakdown.ecoNote}</div></div>) : null}
+                </div>
+                {/* Courier viability stays visible */}
+                {result.courier && <div style={{ padding: '12px 14px', borderRadius: 10, background: '#FFF7ED', border: '2px solid #FB923C', color: '#9A3412', fontSize: 13, marginTop: 8, lineHeight: 1.5 }}><span style={{ fontWeight: 700 }}>Courier viability: </span>{result.courier}</div>}
+                {/* Zone conflict warnings stay visible */}
+                {result.warnings.filter(w => w.startsWith('Zone conflict:')).map((w, i) => (<div key={i} style={{ padding: '10px 14px', borderRadius: 10, fontSize: 13, marginTop: 8, lineHeight: 1.5, background: '#FFFBEB', border: '2px solid #F59E0B', color: '#92400E' }}><span style={{ fontWeight: 700 }}>⚠ </span>{w}</div>))}
+                {/* Show calculations toggle */}
+                <div style={{ textAlign: 'center', marginTop: 8 }}>
+                  <button onClick={() => setShowCalcs(!showCalcs)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#537044', padding: '6px 12px' }}>
+                    {showCalcs ? '▲ Hide calculations' : '▼ Show calculations'}
+                  </button>
+                </div>
+                {showCalcs && (
+                  <div style={{ marginTop: 6 }}>
+                    <div style={styles.breakdown}>
+                      {result.breakdown.nd && <div>ND: £{result.breakdown.nd.base?.toFixed(2)} base{result.breakdown.nd.note ? ' ('+result.breakdown.nd.note+')' : ''} + £{result.breakdown.nd.surcharges?.toFixed(2)} surcharges + £{result.breakdown.nd.fuel?.toFixed(2)} fuel ({result.fuelPct.toFixed(1)}%). Excl. VAT.</div>}
+                      {result.breakdown.eco && <div>Eco: £{result.breakdown.eco.base?.toFixed(2)} base{result.breakdown.eco.note ? ' ('+result.breakdown.eco.note+')' : ''} + £{result.breakdown.eco.surcharges?.toFixed(2)} surcharges + £{result.breakdown.eco.fuel?.toFixed(2)} fuel ({result.fuelPct.toFixed(1)}%). Excl. VAT.</div>}
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Warnings (amber for zone conflicts, red for others) */}
-              {result.warnings.map((w, i) => {
-                const isConflict = w.startsWith('Zone conflict:');
-                return (
-                  <div key={i} style={{
-                    padding: '10px 14px', borderRadius: 10, fontSize: 12, marginTop: 8, lineHeight: 1.5,
-                    background: isConflict ? '#FFFBEB' : '#FEF2F2',
-                    border: isConflict ? '2px solid #F59E0B' : '1px solid #FECACA',
-                    color: isConflict ? '#92400E' : '#991B1B',
-                  }}>
-                    {isConflict && <span style={{ fontWeight: 700 }}>⚠ </span>}
-                    {w}
+                    {result.info && result.info.length > 0 && <div style={{ marginTop: 8 }}>{result.info.map((n, i) => (<div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#3D5332', fontSize: 13, marginTop: i > 0 ? 4 : 0, lineHeight: 1.5 }}>{n}</div>))}</div>}
+                    {result.warnings.filter(w => !w.startsWith('Zone conflict:')).map((w, i) => (<div key={i} style={{ padding: '10px 14px', borderRadius: 10, fontSize: 13, marginTop: 8, lineHeight: 1.5, background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B' }}>{w}</div>))}
                   </div>
-                );
-              })}
-              
-              {/* Courier viability */}
-              {result.courier && (
-                <div style={{ padding: '10px 14px', borderRadius: 10, background: '#FFF7ED', border: '2px solid #FB923C', color: '#9A3412', fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
-                  <span style={{ fontWeight: 700 }}>Courier viability: </span>{result.courier}
+                )}
+                {elapsed && <div style={{ textAlign: 'center', marginTop: 8 }}><span style={styles.timer}>⚡ {elapsed}s from first tap</span></div>}
+              </>
+            )}
+          </div>
+        ) : (
+          <div>
+            {/* Collection point - collapsed after selection */}
+            {collection && !showCollectionPicker ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '10px 14px', borderRadius: 10, border: '2px solid #537044', background: '#53704410' }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#1e293b' }}>{COLLECTION_POINTS.find(c => c.id === collection)?.label}</div>
+                  <div style={{ fontSize: 13, color: '#64748b' }}>{haulier}</div>
                 </div>
-              )}
-              
-              {/* Timer */}
-              {elapsed && (
-                <div style={{ textAlign: 'center', marginTop: 12 }}>
-                  <span style={styles.timer}>⚡ {elapsed}s from first tap</span>
+                <button onClick={() => setShowCollectionPicker(true)} style={{ background: 'none', border: '1px solid #537044', borderRadius: 8, padding: '6px 12px', fontSize: 13, fontWeight: 600, color: '#537044', cursor: 'pointer' }}>Change</button>
+              </div>
+            ) : (
+              <div style={styles.step}><div style={styles.stepLabel}>Collection point</div><div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{COLLECTION_POINTS.map(cp => (<div key={cp.id} style={styles.btn(collection === cp.id, cp.color)} onClick={() => handleCollectionSelect(cp.id)}><div style={styles.btnLabel}>{cp.label}</div><div style={styles.btnSub}>{cp.haulier}</div></div>))}</div></div>
+            )}
+            {collection && (<>
+              {/* Postcode - prominent */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>Delivery postcode</div>
+                <div style={{ position: 'relative' }}>
+                  <input ref={postcodeRef} style={{...styles.input, fontSize: 20, padding: '14px 16px', fontWeight: 600, borderColor: postcode.length >= 2 && !(() => { if (haulier === 'CDL') return matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO); if (haulier && haulier.startsWith('Horizon')) return matchHorizonZone(postcode); return true; })() ? '#EF4444' : '#537044', borderWidth: '2px'}} value={postcode} onChange={e => setPostcode(e.target.value.toUpperCase())} onKeyDown={handleKeyDown} maxLength={8} />
+                  <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: postcode.length >= 2 ? '#537044' : '#e2e8f0' }}>→</div>
                 </div>
-              )}
-            </>
-          )}
-        </div>
+                {postcode.length >= 2 && (() => {
+                  let zone = null;
+                  if (haulier === 'CDL') { const z = matchCDLZone(postcode); zone = z ? 'Zone ' + z.zone : null; }
+                  else if (haulier === 'Longs of Leeds') { const z = matchLongsZone(postcode); zone = z !== null ? 'Zone ' + z : null; }
+                  else if (haulier === 'TWA') { const r = matchTWAZone(postcode, TWA_ND); zone = r ? 'Zone ' + r[0] : null; }
+                  else if (haulier && haulier.startsWith('Horizon')) { const r = matchHorizonZone(postcode); zone = r ? r[0] : null; }
+                  if (zone) return <div style={{ padding: '6px 10px', borderRadius: 8, background: '#EDF5EB', fontSize: 13, color: '#537044', fontWeight: 500, marginTop: 6 }}>{zone}</div>;
+                  return <div style={{ padding: '8px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', fontSize: 13, marginTop: 6 }}>{postcode.toUpperCase()} not found in {haulier} zones</div>;
+                })()}
+              </div>
+
+              {/* Rest of form - only shows after valid postcode entered */}
+              {postcode.length >= 2 && (() => { if (haulier === 'CDL') return !!matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return !!(matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO)); if (haulier && haulier.startsWith('Horizon')) return !!matchHorizonZone(postcode); return false; })() && (<>
+                <div style={styles.step}><div style={styles.stepLabel}>Pallet size</div>
+                  <div style={{...styles.btn(palletSize === '8x4', '#537044'), marginBottom: 8, textAlign: 'center'}} onClick={() => setPalletSize('8x4')}>
+                    <div style={{...styles.btnLabel, textAlign: 'center', fontSize: 16}}>8x4</div>
+                    <div style={{...styles.btnSub, textAlign: 'center'}}>2440 x 1220mm</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {PALLET_SIZES.filter(ps => ps.id !== '8x4' && ps.id !== 'custom').map(ps => (<div key={ps.id} style={styles.pill(palletSize === ps.id)} onClick={() => setPalletSize(ps.id)}>{ps.label}</div>))}
+                    <div style={styles.pill(palletSize === 'custom')} onClick={() => setPalletSize('custom')}>Custom</div>
+                  </div>
+                  {palletSize === 'custom' && (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, color: '#475569', fontWeight: 500, marginBottom: 3 }}>Width (mm)</div>
+                        <input style={{...styles.input, fontSize: 14, padding: '8px 10px', textAlign: 'center'}} value={customW} onChange={e => setCustomW(e.target.value.replace(/\D/g, ''))} />
+                      </div>
+                      <div style={{ color: '#94a3b8', fontSize: 14, paddingTop: 16 }}>x</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, color: '#475569', fontWeight: 500, marginBottom: 3 }}>Length (mm)</div>
+                        <input style={{...styles.input, fontSize: 14, padding: '8px 10px', textAlign: 'center'}} value={customL} onChange={e => setCustomL(e.target.value.replace(/\D/g, ''))} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div style={styles.step}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={styles.stepLabel}>Pallets</div>
+                    <div style={styles.qtyRow}>
+                      <button style={styles.qtyBtn} onClick={() => { if (palletWeights.length > 1) setPalletWeights(prev => prev.slice(0, -1)); }}>−</button>
+                      <span style={styles.qtyNum}>{qty}</span>
+                      <button style={styles.qtyBtn} onClick={() => { if (palletWeights.length < 6) setPalletWeights(prev => [...prev, '']); }}>+</button>
+                    </div>
+                  </div>
+                  {palletWeights.length === 1 ? (
+                    <div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Total weight (kg) - optional</div>
+                      <input style={{...styles.input, width: 140}} value={palletWeights[0]} onChange={e => setPalletWeights([e.target.value.replace(/\D/g, '')])} onKeyDown={handleKeyDown} />
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: palletWeights.length <= 3 ? 'repeat(' + palletWeights.length + ', 1fr)' : 'repeat(3, 1fr)', gap: 6 }}>
+                      {palletWeights.map((w, i) => (
+                        <div key={i}>
+                          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 3 }}>Pallet {i + 1} (kg)</div>
+                          <input style={{...styles.input, fontSize: 15, padding: '8px 10px', textAlign: 'center'}} value={w} onChange={e => { const next = [...palletWeights]; next[i] = e.target.value.replace(/\D/g, ''); setPalletWeights(next); }} onKeyDown={handleKeyDown} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={styles.step}><div style={styles.stepLabel}>Surcharges</div><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{SURCHARGES.filter(s => !(s.id === 'hand' && haulier === 'CDL')).map(s => (<div key={s.id} style={styles.pill(selectedSurcharges.includes(s.id))} onClick={() => toggleSurcharge(s.id)}>{s.label}</div>))}</div></div>
+                <button style={styles.goBtn} onClick={doCalculate}>Get Rate</button>
+              </>)}
+            </>)}
+          </div>
+        )
       ) : (
-        <div>
-          {/* Collection point */}
-          <div style={styles.step}>
-            <div style={styles.stepLabel}>Collection point</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {COLLECTION_POINTS.map(cp => (
-                <div key={cp.id} style={styles.btn(collection === cp.id, cp.color)} onClick={() => handleCollectionSelect(cp.id)}>
-                  <div style={styles.btnLabel}>{cp.label}</div>
-                  <div style={styles.btnSub}>{cp.haulier}</div>
-                </div>
+        /* IMMINGHAM TAB */
+        immResult ? (
+          <div>
+            <button style={styles.backBtn} onClick={resetImm}>← New calculation</button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {[immResult.zone, immPostcode.toUpperCase(), immHandball ? 'Handball' : null, ...immLines.filter(l => l.material).map(l => { const mat = IMM_MATERIALS.find(m => m.id === l.material); return mat ? mat.label+' '+l.thickness+'mm x'+l.sheets : null; })].filter(Boolean).map((t, i) => (
+                <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: i === 0 ? '#53704415' : 'var(--card-bg, #f1f5f9)', fontSize: 11, fontWeight: 600, color: i === 0 ? '#537044' : 'var(--text-secondary, #64748b)', border: '1px solid '+(i === 0 ? '#53704430' : 'var(--border, #e2e8f0)') }}>{t}</span>
               ))}
             </div>
+            {immResult.errors.length > 0 ? (
+              <div>{immResult.errors.map((e, i) => (<div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#FEF2F2', border: '2px solid #EF4444', color: '#991B1B', fontSize: 14, fontWeight: 500, marginTop: i > 0 ? 8 : 0, lineHeight: 1.5 }}>{e}</div>))}</div>
+            ) : (<>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                <div style={styles.card('#EDF5EB', '#7A9A68')}><div style={{...styles.cardLabel, color: '#537044'}}>Immingham Charge</div><div style={{...styles.cardPrice, color: '#3D5332'}}>£{immResult.charge.toFixed(2)}</div><button style={styles.copyBtn} onClick={() => handleImmCopy(immResult.charge)}>{immCopied ? '✓' : 'Copy'}</button></div>
+              </div>
+
+              {/* CDL Comparison */}
+              {immResult.cdl && immResult.charge && (() => {
+                const cdlIsCheaper = immResult.breakdown.totalPallets === 1 && (
+                  (immResult.cdl.nd !== null && immResult.cdl.nd < immResult.charge) ||
+                  (immResult.cdl.eco !== null && immResult.cdl.eco < immResult.charge)
+                );
+                const showCdl = cdlIsCheaper || showCdlCompare;
+                
+                return (<>
+                  {/* Auto-show prominent callout when CDL is cheaper + 1 pallet */}
+                  {cdlIsCheaper && (
+                    <div style={{ marginTop: 4, marginBottom: 8, padding: '14px 16px', borderRadius: 12, background: '#ECFDF5', border: '2px solid #059669' }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#065F46', marginBottom: 8 }}>CDL may be cheaper</div>
+                      <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>{immResult.cdl.zone} — 1 x 8x4 = 2 pallet spaces</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {immResult.cdl.nd !== null && immResult.cdl.nd < immResult.charge && (
+                          <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fff', border: '1px solid #A7F3D0', flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#537044', textTransform: 'uppercase' }}>CDL Next Day</div>
+                            <div style={{ fontSize: 20, fontWeight: 700, color: '#065F46' }}>£{immResult.cdl.nd.toFixed(2)}</div>
+                            <div style={{ fontSize: 13, color: '#059669', fontWeight: 700, marginTop: 2 }}>£{(immResult.charge - immResult.cdl.nd).toFixed(2)} cheaper</div>
+                          </div>
+                        )}
+                        {immResult.cdl.eco !== null && immResult.cdl.eco < immResult.charge && (
+                          <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fff', border: '1px solid #A7F3D0', flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#537044', textTransform: 'uppercase' }}>CDL Economy</div>
+                            <div style={{ fontSize: 20, fontWeight: 700, color: '#065F46' }}>£{immResult.cdl.eco.toFixed(2)}</div>
+                            <div style={{ fontSize: 13, color: '#059669', fontWeight: 700, marginTop: 2 }}>£{(immResult.charge - immResult.cdl.eco).toFixed(2)} cheaper</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual toggle when criteria not met */}
+                  {!cdlIsCheaper && !showCdlCompare && (
+                    <div style={{ textAlign: 'center', marginTop: 8 }}>
+                      <button onClick={() => setShowCdlCompare(true)} style={{ background: 'none', border: '1px solid #537044', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#537044', cursor: 'pointer' }}>Show CDL rate for comparison</button>
+                    </div>
+                  )}
+
+                  {/* Manual comparison view */}
+                  {!cdlIsCheaper && showCdlCompare && (
+                    <div style={{ marginTop: 8, padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>CDL comparison ({immResult.cdl.zone}, {immResult.breakdown.totalPallets} x 8x4 = {immResult.breakdown.totalPallets * 2} spaces)</div>
+                        <button onClick={() => setShowCdlCompare(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>✕</button>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {immResult.cdl.nd !== null && (
+                          <div style={{ padding: '10px 14px', borderRadius: 10, background: '#EDF5EB', border: '1px solid #8FB585', flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#537044', textTransform: 'uppercase' }}>CDL Next Day</div>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: '#3D5332' }}>£{immResult.cdl.nd.toFixed(2)}</div>
+                            <div style={{ fontSize: 12, color: immResult.cdl.nd < immResult.charge ? '#059669' : '#991B1B', fontWeight: 600, marginTop: 2 }}>{immResult.cdl.nd < immResult.charge ? '£'+(immResult.charge - immResult.cdl.nd).toFixed(2)+' cheaper' : '£'+(immResult.cdl.nd - immResult.charge).toFixed(2)+' more'}</div>
+                          </div>
+                        )}
+                        {immResult.cdl.eco !== null && (
+                          <div style={{ padding: '10px 14px', borderRadius: 10, background: '#EDF5EB', border: '1px solid #8FB585', flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#537044', textTransform: 'uppercase' }}>CDL Economy</div>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: '#3D5332' }}>£{immResult.cdl.eco.toFixed(2)}</div>
+                            <div style={{ fontSize: 12, color: immResult.cdl.eco < immResult.charge ? '#059669' : '#991B1B', fontWeight: 600, marginTop: 2 }}>{immResult.cdl.eco < immResult.charge ? '£'+(immResult.charge - immResult.cdl.eco).toFixed(2)+' cheaper' : '£'+(immResult.cdl.eco - immResult.charge).toFixed(2)+' more'}</div>
+                          </div>
+                        )}
+                        {!immResult.cdl.nd && !immResult.cdl.eco && (
+                          <div style={{ padding: '10px', fontSize: 13, color: '#64748b' }}>CDL rates not available for this postcode</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>);
+              })()}
+
+              {/* Courier viability */}
+              {immResult.courier && (
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: '#FFF7ED', border: '2px solid #FB923C', color: '#9A3412', fontSize: 13, marginTop: 8, lineHeight: 1.5 }}><span style={{ fontWeight: 700 }}>Courier viability: </span>{immResult.courier}</div>
+              )}
+
+              {/* Show calculations toggle */}
+              <div style={{ textAlign: 'center', marginTop: 8 }}>
+                <button onClick={() => setShowCalcs(!showCalcs)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#537044', padding: '6px 12px' }}>
+                  {showCalcs ? '▲ Hide calculations' : '▼ Show calculations'}
+                </button>
+              </div>
+              {showCalcs && (
+                <div style={{ marginTop: 6 }}>
+                  <div style={styles.breakdown}>
+                    <div>Actual: {immResult.breakdown.actualWeight}kg | Volumetric: {immResult.breakdown.volWeight}kg | Charged at: {immResult.breakdown.bracketWeight}kg bracket</div>
+                    <div>Base rate: £{immResult.breakdown.baseRate.toFixed(2)}{immResult.breakdown.handballCharge > 0 ? ' + £'+immResult.breakdown.handballCharge.toFixed(2)+' handball ('+immResult.breakdown.totalPallets+' packs x £20)' : ''} + £{immResult.breakdown.fuelCharge} fuel ({(IMM_FUEL*100).toFixed(0)}%). Excl. VAT.</div>
+                  </div>
+                  {immResult.info.length > 0 && <div style={{ marginTop: 8 }}>{immResult.info.map((n, i) => (<div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#3D5332', fontSize: 13, marginTop: i > 0 ? 4 : 0, lineHeight: 1.5 }}>{n}</div>))}</div>}
+                </div>
+              )}
+            </>)}
           </div>
-
-          {collection && (
-            <>
-              {/* Postcode */}
-              <div style={styles.step}>
-                <div style={styles.stepLabel}>Delivery postcode</div>
-                <input
-                  ref={postcodeRef}
-                  style={styles.input}
-                  value={postcode}
-                  onChange={e => { setPostcode(e.target.value.toUpperCase()); }}
-                  onKeyDown={handleKeyDown}
-                  placeholder="e.g. ME15"
-                  maxLength={8}
-                />
+        ) : (
+          <div>
+            <div style={{ padding: '10px 14px', borderRadius: 10, background: '#FFF7ED', border: '1px solid #FED7AA', color: '#9A3412', fontSize: 12, marginBottom: 16, lineHeight: 1.5 }}>For any jobs that aren't 8x4, get a quote directly from Immingham.</div>
+            
+            {/* Postcode - prominent, always visible */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>First part of postcode <span style={{ fontWeight: 400, fontStyle: 'italic', fontSize: 13, color: '#64748b' }}>(e.g. DN40)</span></div>
+              <div style={{ position: 'relative' }}>
+                <input style={{...styles.input, fontSize: 20, padding: '14px 16px', fontWeight: 600, borderColor: immPostcode.length >= 2 && !matchImmZone(immPostcode) ? '#EF4444' : immPostcode.length >= 2 && isImmROR(immPostcode) ? '#F59E0B' : '#537044', borderWidth: '2px'}} value={immPostcode} onChange={e => setImmPostcode(e.target.value.toUpperCase())} maxLength={8} onKeyDown={e => { if (e.key === 'Enter' && immPostcode.length >= 2) doImmCalc(); }} />
+                <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: immPostcode.length >= 2 ? '#537044' : '#e2e8f0' }}>→</div>
               </div>
+              {immPostcode.length >= 2 && isImmROR(immPostcode) && (
+                <div style={{ padding: '8px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{immPostcode.toUpperCase()} is Rate on Request. Contact Immingham directly.</div>
+              )}
+              {immPostcode.length >= 2 && !isImmROR(immPostcode) && !matchImmZone(immPostcode) && (
+                <div style={{ padding: '8px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{immPostcode.toUpperCase()} not found in Immingham zones.</div>
+              )}
+              {immPostcode.length >= 2 && !isImmROR(immPostcode) && matchImmZone(immPostcode) && (
+                <div style={{ padding: '6px 10px', borderRadius: 8, background: '#EDF5EB', fontSize: 13, color: '#537044', fontWeight: 500, marginTop: 6 }}>{matchImmZone(immPostcode)}</div>
+              )}
+            </div>
 
-              {/* Pallet size & qty */}
-              <div style={styles.step}>
-                <div style={styles.stepLabel}>Pallet size</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {PALLET_SIZES.map(ps => (
-                    <div key={ps.id} style={styles.pill(palletSize === ps.id)} onClick={() => setPalletSize(ps.id)}>
-                      {ps.label}
+            {/* Rest of form - only shows after valid postcode entered */}
+            {immPostcode.length >= 2 && !isImmROR(immPostcode) && matchImmZone(immPostcode) && (<>
+              {immLines.map((line, idx) => (
+                <div key={idx} style={{ ...styles.step, padding: '14px', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)', background: 'var(--card-bg, #fff)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#475569' }}>Product {idx + 1}</div>
+                    {immLines.length > 1 && <button onClick={() => setImmLines(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>✕ Remove</button>}
+                  </div>
+
+                  {/* Material dropdown */}
+                  <select style={{...selectStyle, marginBottom: 10}} value={line.material} onChange={e => updateImmLine(idx, 'material', e.target.value)}>
+                    <option value="">Select material</option>
+                    {IMM_MATERIALS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  </select>
+
+                  {/* Sheets and thickness - side by side, always visible after material selected */}
+                  {line.material && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 13, color: '#475569', fontWeight: 500, marginBottom: 3 }}>Total sheets</div>
+                        <input style={smallInput} value={line.sheets} onChange={e => updateImmLine(idx, 'sheets', e.target.value.replace(/\D/g, ''))} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, color: '#475569', fontWeight: 500, marginBottom: 3 }}>Thickness (mm)</div>
+                        <input style={smallInput} value={line.thickness} onChange={e => updateImmLine(idx, 'thickness', e.target.value.replace(/[^\d.]/g, ''))} />
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  )}
 
-              <div style={styles.step}>
-                <div style={styles.stepLabel}>Quantity</div>
-                <div style={styles.qtyRow}>
-                  <button style={styles.qtyBtn} onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
-                  <span style={styles.qtyNum}>{qty}</span>
-                  <button style={styles.qtyBtn} onClick={() => setQty(Math.min(6, qty + 1))}>+</button>
-                </div>
-              </div>
-
-              <div style={styles.step}>
-                <div style={styles.stepLabel}>Weight per pallet (kg) - optional</div>
-                <input
-                  style={{...styles.input, width: 120}}
-                  value={weight}
-                  onChange={e => setWeight(e.target.value.replace(/\D/g, ''))}
-                  onKeyDown={handleKeyDown}
-                  placeholder="500"
-                />
-              </div>
-
-              {/* Surcharges */}
-              <div style={styles.step}>
-                <div style={styles.stepLabel}>Surcharges</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {SURCHARGES.filter(s => !(s.id === 'hand' && haulier === 'CDL')).map(s => (
-                    <div key={s.id} style={styles.pill(selectedSurcharges.includes(s.id))} onClick={() => toggleSurcharge(s.id)}>
-                      {s.label}
+                  {/* Pallets - appears after sheets and thickness filled */}
+                  {line.material && line.sheets && line.thickness && (
+                    <div style={{ padding: '10px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+                        <span style={{ color: '#475569', fontWeight: 500 }}>Packed on</span>
+                        <input style={{...smallInput, width: 52}} value={line.pallets} onChange={e => updateImmLine(idx, 'pallets', e.target.value.replace(/\D/g, ''))} />
+                        <span style={{ color: '#475569', fontWeight: 500 }}>pallets</span>
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
+              ))}
+
+              {/* Add another product */}
+              <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                <button onClick={() => setImmLines(prev => [...prev, {material:'',thickness:'',pallets:'',sheets:''}])} style={{ background: 'none', border: '1px dashed #537044', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 600, color: '#537044', cursor: 'pointer', width: '100%' }}>+ Add another product</button>
               </div>
 
-              {/* Calculate */}
-              <button
-                style={{...styles.goBtn, opacity: canCalculate ? 1 : 0.4 }}
-                onClick={doCalculate}
-                disabled={!canCalculate}
-              >
-                Get Rate
-              </button>
-            </>
-          )}
-        </div>
+              <div style={styles.step}><div style={styles.pill(immHandball)} onClick={() => setImmHandball(!immHandball)}>Handball (£20 per pack)</div></div>
+              <button style={{...styles.goBtn, background: '#537044'}} onClick={doImmCalc}>Calculate</button>
+            </>)}
+          </div>
+        )
       )}
     </div>
   );
