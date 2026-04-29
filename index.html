@@ -108,7 +108,7 @@ const LONGS_ECO = {1:[32.35,33.49,34.64,36.96,39.29,75.22,106.32,129.88,147.8,16
 const TWA_ND = [
   ["LOCAL","CH, L",[34,36,38,40,42,50],[66,70,74,78,82,98,160,165,170],[98,104,110,116,122,144]],
   [1,"B, CV, CW, DE, DY, LE, NG, ST, TF, WS, WV",[57.33,58.45,61.81,63.49,65.17,70.82],[112.65,114.89,121.61,124.97,128.33,139.64,232.07,254.07,276.07],[165.98,169.34,179.42,184.46,189.5,206.47]],
-  [2,"BB, BD, BL, HD, H, LS, M, OL, PR, S1-14,17-18,20-21,25-26,35,40-45,49,60-66,70-75,80-81,96-98, SK1-8, SK9-17,22-23, WA, WF, WN",[57.89,59.01,62.93,66.01,67.69,73.72],[113.77,116.01,123.85,130.01,133.37,145.45,241.79,263.79,285.79],[167.66,171.02,182.78,192.02,197.06,215.17]],
+  [2,"BB, BD, BL, HD, HX, LS, M, OL, PR, S1-14,17-18,20-21,25-26,35,40-45,49,60-66,70-75,80-81,96-98, SK1-8, SK9-17,22-23, WA, WF, WN",[57.89,59.01,62.93,66.01,67.69,73.72],[113.77,116.01,123.85,130.01,133.37,145.45,241.79,263.79,285.79],[167.66,171.02,182.78,192.02,197.06,215.17]],
   [3,"DN, FY, S32-33,36, WR",[59.01,60.13,64.89,68.81,70.49,74.98],[116.01,118.25,127.77,135.61,138.97,147.96,252.59,274.59,296.59],[171.02,174.38,188.66,200.42,205.46,218.93]],
   [4,"AL, BS, GL, HP, HU, HR, LN, LU, MK, NN, OX5,7,15-17,20,25-27, NP, PE1-16,19,26-29, PE20-25, PE30-38, SG, SN",[60.69,61.81,66.29,71.05,73.85,79.51],[119.37,121.61,130.57,140.09,145.69,157.03,261.23,283.23,305.23],[176.06,179.42,192.86,207.14,215.54,232.54]],
   [5,"BA3,5,8-11,13-15, CB, CF, CO, DL, HG, IP, NR, OX1-4,9-14,18,28-29,33,39,44,49, SR, SS, TS1-5,19-29, TS6-18, WD, YO1,7-8,10-12,14-17,19,23-26",[64.05,65.17,68.53,72.45,74.13,81.13],[126.09,128.33,135.05,142.89,146.25,160.25,266.63,311.88,352.13],[186.14,189.5,199.58,211.34,216.38,237.38]],
@@ -271,9 +271,32 @@ function parsePostcodeString(str) {
   const entries = [];
   let lastArea = null;
   
-  for (const part of parts) {
-    // Skip descriptive text
-    if (part.includes('(') || part.includes('excluding') || part.includes('Rest of') || part.includes('Dublin')) continue;
+  for (let part of parts) {
+    // Skip purely descriptive text
+    if (part.includes('(') || part.includes('excluding')) continue;
+    
+    // Strip leading descriptive words: "Belfast BT1-18" -> "BT1-18", "Isle of Man IM" -> "IM"
+    // Find the last word that starts with uppercase and looks like a postcode
+    const words = part.split(/\s+/);
+    if (words.length > 1) {
+      // Find rightmost token that looks like a postcode pattern (starts with letter, may have digits)
+      for (let w = words.length - 1; w >= 0; w--) {
+        if (/^[A-Z]/.test(words[w]) && /^[A-Z]+\d*/.test(words[w])) {
+          // Rejoin from this word onwards (handles "Rest of Northern Ireland BT19+" -> "BT19+")
+          part = words.slice(w).join(' ');
+          // If still multi-word and second word is a postcode too, split them
+          // e.g. "Guernsey GY1-8" -> "GY1-8"
+          if (/^[A-Z]+\d/.test(part.split(/\s+/)[0]) || /^[A-Z]+$/.test(part.split(/\s+/)[0])) {
+            part = part.split(/\s+/)[0];
+          }
+          break;
+        }
+      }
+    }
+    
+    // Skip remaining descriptive-only text
+    if (/^(Rest|Dublin|Belfast|Jersey|Guernsey|Alderney|Sark|Herm|Isle|of|Northern|Ireland|Island|City|County|Scilly|Isles)$/i.test(part)) continue;
+    if (part.includes('Rest of') || part.includes('Dublin')) continue;
     
     // Full pattern with area: "BA3-5" or "BA3" or "BA"
     const fullRange = part.match(/^([A-Z]+)(\d+)-(\d+)$/);
@@ -342,7 +365,7 @@ function matchCDLZone(postcode) {
   
   for (const z of CDL_ZONES) {
     // Handle remainder zones
-    if (z.postcodes.includes('(remainder)') && z.postcodes.startsWith(area)) return z;
+    if (z.postcodes.includes('(remainder)') && z.postcodes.includes(area + ' (remainder)')) return z;
     if (postcodeMatchesString(postcode, z.postcodes)) return z;
   }
   return null;
@@ -1012,7 +1035,12 @@ function calcImmingham(postcode, lines, handball) {
   result.info.push("Height: " + totalHeightMm.toFixed(0) + "mm across " + totalStacks + " stack" + (totalStacks !== 1 ? "s" : "") + " (max 2400mm per stack)");
 
   // CDL comparison: 8x4 = 2 pallet spaces, calculate per-pallet then multiply
-  const cdlZone = matchCDLZone(postcode);
+  // Try exact postcode first, then fallback with district '1' for bare area codes (e.g. 'ML' -> 'ML1')
+  let cdlZone = matchCDLZone(postcode);
+  if (!cdlZone) {
+    const { area, district } = extractPostcodeArea(postcode);
+    if (district === null) cdlZone = matchCDLZone(area + '1');
+  }
   if (cdlZone) {
     const totalSpaces = 2 * totalPallets; // 8x4 = 2 spaces each
     const cdlNdPerSpace = cdlZone.nd;
@@ -1227,7 +1255,7 @@ function RateLookupApp() {
                   )}
                 </div>
                 <div style={styles.step}><div style={styles.stepLabel}>Surcharges</div><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{SURCHARGES.filter(s => !(s.id === 'hand' && haulier === 'CDL')).map(s => (<div key={s.id} style={styles.pill(selectedSurcharges.includes(s.id))} onClick={() => toggleSurcharge(s.id)}>{s.label}</div>))}</div></div>
-                <button style={styles.goBtn} onClick={doCalculate}>Get Rate</button>
+                <button style={{...styles.goBtn, opacity: (palletSize === 'custom' && (!customW || !customL)) ? 0.4 : 1}} onClick={doCalculate} disabled={palletSize === 'custom' && (!customW || !customL)}>Get Rate</button>
               </>)}
             </>)}
           </div>
@@ -1412,7 +1440,10 @@ function RateLookupApp() {
               </div>
 
               <div style={styles.step}><div style={styles.pill(immHandball)} onClick={() => setImmHandball(!immHandball)}>Handball (£20 per pack)</div></div>
-              <button style={{...styles.goBtn, background: '#537044'}} onClick={doImmCalc}>Calculate</button>
+              {(() => {
+                const immReady = immLines.some(l => l.material && l.sheets && l.thickness && l.pallets);
+                return <button style={{...styles.goBtn, background: '#537044', opacity: immReady ? 1 : 0.4}} onClick={doImmCalc} disabled={!immReady}>Calculate</button>;
+              })()}
             </>)}
           </div>
         )
