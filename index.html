@@ -1128,7 +1128,18 @@ function RateLookupApp() {
   const removeSubLine = (idx, subIdx) => { setImmLines(prev => { const next = [...prev]; const subs = next[idx].subLines.filter((_, i) => i !== subIdx); next[idx] = { ...next[idx], subLines: subs, mixed: subs.length > 0 }; return next; }); };
   const doImmCalc = () => {
     // Check for Rate on Request postcodes (user selects zone, but we can't check postcode here -- zone 6 has the ROR areas)
-    const lines = immLines.map(l => ({ material: l.material, thickness: l.thickness ? parseFloat(l.thickness) : 0, pallets: l.pallets ? parseInt(l.pallets) : 0, sheets: l.sheets ? parseInt(l.sheets) : 0 }));
+    const lines = immLines.map(l => ({
+      material: l.material,
+      thickness: l.thickness ? parseFloat(l.thickness) : 0,
+      pallets: l.pallets ? parseInt(l.pallets) : 0,
+      sheets: l.sheets ? parseInt(l.sheets) : 0,
+      mixed: l.mixed || false,
+      subLines: (l.subLines || []).map(s => ({
+        material: s.material,
+        thickness: s.thickness ? parseFloat(s.thickness) : 0,
+        sheets: s.sheets ? parseInt(s.sheets) : 0,
+      })),
+    }));
     setImmResult(calcImmingham(immPostcode, lines, immHandball));
   };
   const resetImm = () => { setImmPostcode(''); setImmHandball(false); setImmResult(null); setImmLines([{material:'',thickness:'',pallets:'',sheets:'',mixed:false,subLines:[]}]); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); };
