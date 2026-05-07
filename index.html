@@ -63,8 +63,10 @@ const CDL_ZONES = [
   {zone:14,postcodes:"NE19,48,61,65-71",nd:80,eco:70},
   {zone:15,postcodes:"TR1-20,26-27,93",nd:92,eco:76},
   {zone:21,postcodes:"BR, CR, DA, KT1-13,17-22, SM, TW",nd:73,eco:66},
+  {zone:21,postcodes:"HA, IG, RM, UB",nd:73,eco:66,estimated:true},
   {zone:22,postcodes:"E3,5-18,20, N2,4-8,10,15-17,19,22, NW2-3,5-6,8,10-11, SE2-10,12-15,18-28, SW2,4-6,8-20, W3-14",nd:77,eco:68.5},
   {zone:23,postcodes:"E1-2,1W,77,98, EC, N1,1C,1P, NW1, SE1,11,16-17, SW1,3,7, W1-2, WC",nd:80,eco:75},
+  {zone:23,postcodes:"N3,9,11-14,18,20-21, E4, NW4,7,9",nd:80,eco:75,estimated:true},
   {zone:30,postcodes:"CF3,5,10-11,14-15,23-24,38,46-48,64,81-83, NP",nd:59,eco:54},
   {zone:31,postcodes:"CF31-37,39-45,61-63,71-72",nd:65,eco:60},
   {zone:32,postcodes:"LD, LL11-32, SY7-8,10-12",nd:73,eco:66.5},
@@ -552,6 +554,10 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
     const z = matchCDLZone(postcode);
     if (!z) { result.errors.push("Postcode not found in CDL zones"); return result; }
     result.zone = `Zone ${z.zone}`;
+    result.estimated = z.estimated || false;
+    if (z.estimated) {
+      result.info.push("Not on CDL rate sheet - based on best estimate (Zone " + z.zone + ")");
+    }
     
     // Conflict check
     const allMatches = findAllCDLMatches(postcode);
@@ -1177,7 +1183,11 @@ function RateLookupApp() {
               <div>{result.errors.map((e, i) => (<div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#FEF2F2', border: '2px solid #EF4444', color: '#991B1B', fontSize: 14, fontWeight: 500, marginTop: i > 0 ? 8 : 0, lineHeight: 1.5 }}>{e}</div>))}</div>
             ) : (
               <>
-                <div style={{ fontSize: 14, color: '#64748b', marginBottom: 10 }}>{result.zone}</div>
+                {result.estimated ? (
+                  <div style={{ padding: '8px 12px', borderRadius: 8, background: '#FFFBEB', border: '1px solid #FED7AA', fontSize: 13, color: '#92400E', fontWeight: 500, marginBottom: 10, lineHeight: 1.5 }}>{result.zone} — not on rate sheet, based on best estimate</div>
+                ) : (
+                  <div style={{ fontSize: 14, color: '#64748b', marginBottom: 10 }}>{result.zone}</div>
+                )}
                 <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
                   {result.nd !== null ? (<div style={styles.card('#EDF5EB', '#8FB585')}><div style={{...styles.cardLabel, color: '#537044'}}>Next Day</div><div style={{...styles.cardPrice, color: '#3D5332'}}>£{result.nd.toFixed(2)}</div><button style={styles.copyBtn} onClick={() => handleCopy(result.nd, 'nd')}>{copied === 'nd' ? '✓' : 'Copy'}</button></div>) : result.breakdown.ndNote ? (<div style={styles.naCard}><div style={{...styles.cardLabel, color: 'var(--text-tertiary)'}}>Next Day</div><div style={{ fontSize: 14, fontWeight: 500, color: '#64748b', marginTop: 4 }}>{result.breakdown.ndNote}</div></div>) : null}
                   {result.eco !== null ? (<div style={styles.card('#E1F5EE', '#5DCAA5')}><div style={{...styles.cardLabel, color: '#059669'}}>Economy</div><div style={{...styles.cardPrice, color: '#065F46'}}>£{result.eco.toFixed(2)}</div><button style={styles.copyBtn} onClick={() => handleCopy(result.eco, 'eco')}>{copied === 'eco' ? '✓' : 'Copy'}</button></div>) : result.breakdown.ecoNote ? (<div style={styles.naCard}><div style={{...styles.cardLabel, color: 'var(--text-tertiary)'}}>Economy</div><div style={{ fontSize: 14, fontWeight: 500, color: '#64748b', marginTop: 4 }}>{result.breakdown.ecoNote}</div></div>) : null}
@@ -1230,10 +1240,12 @@ function RateLookupApp() {
                 </div>
                 {postcode.length >= 2 && (() => {
                   let zone = null;
-                  if (haulier === 'CDL') { const z = matchCDLZone(postcode); zone = z ? 'Zone ' + z.zone : null; }
+                  let estimated = false;
+                  if (haulier === 'CDL') { const z = matchCDLZone(postcode); zone = z ? 'Zone ' + z.zone : null; estimated = z ? (z.estimated || false) : false; }
                   else if (haulier === 'Longs of Leeds') { const z = matchLongsZone(postcode); zone = z !== null ? 'Zone ' + z : null; }
                   else if (haulier === 'TWA') { const r = matchTWAZone(postcode, TWA_ND); zone = r ? 'Zone ' + r[0] : null; }
                   else if (haulier && haulier.startsWith('Horizon')) { const r = matchHorizonZone(postcode); zone = r ? r[0] : null; }
+                  if (zone && estimated) return <div style={{ padding: '6px 10px', borderRadius: 8, background: '#FFFBEB', border: '1px solid #FED7AA', fontSize: 13, color: '#92400E', fontWeight: 500, marginTop: 6 }}>{zone} — not on rate sheet, based on best estimate</div>;
                   if (zone) return <div style={{ padding: '6px 10px', borderRadius: 8, background: '#EDF5EB', fontSize: 13, color: '#537044', fontWeight: 500, marginTop: 6 }}>{zone}</div>;
                   return <div style={{ padding: '8px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', fontSize: 13, marginTop: 6 }}>{postcode.toUpperCase()} not found in {haulier} zones</div>;
                 })()}
