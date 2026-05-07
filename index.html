@@ -249,10 +249,10 @@ function getCustomOversizeInfo(wMm, lMm, haulier) {
 }
 
 const SURCHARGES = [
-  { id: "am", label: "AM Delivery" },
-  { id: "timed", label: "Timed Delivery" },
-  { id: "hand", label: "Hand Offload" },
-  { id: "small", label: "Small Vehicle" },
+  { id: "am", label: "AM Delivery", prices: { "CDL": 12, "Longs of Leeds": 15.63, "TWA": 7.50, "Horizon (Austin Wilkinson)": 10.50 } },
+  { id: "timed", label: "Timed Delivery", prices: { "CDL": 15, "Longs of Leeds": 26, "TWA": 15, "Horizon (Austin Wilkinson)": 17 } },
+  { id: "hand", label: "Hand Offload", prices: {} },
+  { id: "small", label: "Small Vehicle", prices: {} },
 ];
 
 // ============ POSTCODE MATCHING ============
@@ -1288,20 +1288,26 @@ function RateLookupApp() {
                   <div style={{ fontSize: 14, fontWeight: 500, color: '#1e293b', marginBottom: 6 }}>Pallet weight - more accurate weight = more accurate quote</div>
                   {palletWeights.length === 1 ? (
                     <div>
-                      <input style={{...styles.input, width: 140}} value={palletWeights[0]} onChange={e => setPalletWeights([e.target.value.replace(/\D/g, '')])} onKeyDown={handleKeyDown} />
+                      <div style={{ position: 'relative', width: 140 }}>
+                        <input style={{...styles.input, width: '100%', paddingRight: 36}} value={palletWeights[0]} onChange={e => setPalletWeights([e.target.value.replace(/\D/g, '')])} onKeyDown={handleKeyDown} />
+                        <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#94a3b8', pointerEvents: 'none' }}>kg</span>
+                      </div>
                     </div>
                   ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: palletWeights.length <= 3 ? 'repeat(' + palletWeights.length + ', 1fr)' : 'repeat(3, 1fr)', gap: 6 }}>
                       {palletWeights.map((w, i) => (
                         <div key={i}>
                           <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>Pallet {i + 1}</div>
-                          <input style={{...styles.input, fontSize: 15, padding: '8px 10px', textAlign: 'center'}} value={w} onChange={e => { const next = [...palletWeights]; next[i] = e.target.value.replace(/\D/g, ''); setPalletWeights(next); }} onKeyDown={handleKeyDown} />
+                          <div style={{ position: 'relative' }}>
+                            <input style={{...styles.input, fontSize: 15, padding: '8px 28px 8px 10px', textAlign: 'center'}} value={w} onChange={e => { const next = [...palletWeights]; next[i] = e.target.value.replace(/\D/g, ''); setPalletWeights(next); }} onKeyDown={handleKeyDown} />
+                            <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#94a3b8', pointerEvents: 'none' }}>kg</span>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-                <div style={styles.step}><div style={styles.stepLabel}>Surcharges</div><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{SURCHARGES.filter(s => !(s.id === 'hand' && haulier === 'CDL')).map(s => (<div key={s.id} style={styles.pill(selectedSurcharges.includes(s.id))} onClick={() => toggleSurcharge(s.id)}>{s.label}</div>))}</div></div>
+                <div style={styles.step}><div style={styles.stepLabel}>Surcharges</div><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{SURCHARGES.filter(s => !(s.id === 'hand' && haulier === 'CDL')).map(s => { const price = s.prices && s.prices[haulier]; return (<div key={s.id} style={styles.pill(selectedSurcharges.includes(s.id))} onClick={() => toggleSurcharge(s.id)}>{s.label}{price ? <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 4 }}>£{price}</span> : null}</div>); })}</div></div>
                 <button style={{...styles.goBtn, opacity: (palletSize === 'custom' && (!customW || !customL)) ? 0.4 : 1}} onClick={doCalculate} disabled={palletSize === 'custom' && (!customW || !customL)}>Get Rate</button>
               </>)}
             </>)}
