@@ -36,9 +36,7 @@
   </style>
 </head>
 <body>
-  <div id="gate" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;"><div style="text-align:center;max-width:320px;width:100%;"><div style="font-size:15px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#537044;margin-bottom:2px;">SPP</div><div style="font-size:26px;font-weight:700;color:#0f172a;margin-bottom:20px;">Transport Rates</div><input id="pw" type="password" placeholder="Enter password" autofocus style="width:100%;padding:12px 16px;border-radius:10px;border:2px solid #e2e8f0;font-size:17px;font-family:inherit;background:#fff;color:#1e293b;outline:none;box-sizing:border-box;text-align:center;" /><button id="go" style="width:100%;padding:16px;border-radius:12px;border:none;background:#537044;color:#fff;font-size:17px;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit;">Unlock</button><div id="err" style="color:#EF4444;font-size:14px;margin-top:10px;display:none;">Wrong password</div></div></div>
-  <div id="root" style="display:none;"></div>
-  <script>async function hashPassword(pw){const d=new TextEncoder().encode(pw);const b=await crypto.subtle.digest('SHA-256',d);return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}const HASH='b687451676426ef42e0fccd585e9b38bd2ff6d308d06f69a9512ea44f8923c7d';async function checkAuth(){if(sessionStorage.getItem('spp_auth')===HASH){unlock();return;}document.getElementById('go').onclick=tryPassword;document.getElementById('pw').onkeydown=(e)=>{if(e.key==='Enter')tryPassword();};}async function tryPassword(){const h=await hashPassword(document.getElementById('pw').value);if(h===HASH){sessionStorage.setItem('spp_auth',HASH);unlock();}else{document.getElementById('err').style.display='block';document.getElementById('pw').value='';document.getElementById('pw').focus();}}function unlock(){document.getElementById('gate').style.display='none';document.getElementById('root').style.display='block';}checkAuth();</script>
+  <div id="root"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -364,8 +362,11 @@ function matchCDLZone(postcode) {
   const { area } = extractPostcodeArea(postcode);
   
   for (const z of CDL_ZONES) {
-    // Handle remainder zones
-    if (z.postcodes.includes('(remainder)') && z.postcodes.includes(area + ' (remainder)')) return z;
+    // Handle remainder zones - use regex word boundary to avoid DN matching N
+    if (z.postcodes.includes('(remainder)')) {
+      const remainderRegex = new RegExp('(^|,\\s*)' + area + ' \\(remainder\\)');
+      if (remainderRegex.test(z.postcodes)) return z;
+    }
     if (postcodeMatchesString(postcode, z.postcodes)) return z;
   }
   return null;
