@@ -652,6 +652,7 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
         if (ecoBase !== null && ecoBase > 0) {
           let surchargeTotal = 0;
           if (surcharges.includes("am")) surchargeTotal += 15.63;
+          if (surcharges.includes("timed")) surchargeTotal += 26;
           const ecoBeforeFuel = ecoBase + surchargeTotal;
           result.eco = +(ecoBeforeFuel * (1 + FUEL_SURCHARGE)).toFixed(2);
           result.breakdown.eco = { base: ecoBase, surcharges: surchargeTotal, fuel: +(ecoBeforeFuel * FUEL_SURCHARGE).toFixed(2) };
@@ -673,6 +674,7 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
         if (ndBase !== null && ndBase > 0) {
           let surchargeTotal = 0;
           if (surcharges.includes("am")) surchargeTotal += 15.63;
+          if (surcharges.includes("timed")) surchargeTotal += 26;
           const ndBeforeFuel = ndBase + surchargeTotal;
           result.nd = +(ndBeforeFuel * (1 + FUEL_SURCHARGE)).toFixed(2);
           result.breakdown.nd = { base: ndBase, surcharges: surchargeTotal, fuel: +(ndBeforeFuel * FUEL_SURCHARGE).toFixed(2) };
