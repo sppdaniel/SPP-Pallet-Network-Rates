@@ -610,7 +610,33 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
       else colIdx = 9;
       
       if (totalSpaces > 6) {
-        result.warnings.push(`${totalSpaces} pallet spaces exceeds 6 FP max on Longs rate card. Contact Longs for quotation.`);
+        result.warnings.push(`${totalSpaces} pallet spaces exceeds 6 FP max on Longs rate card. Contact Longs for quotation. Estimate below based on 2FP x ${qty} pallets.`);
+        // Estimate: use 2FP column (index 5) x number of pallets
+        colIdx = 5;
+        const ndRates = LONGS_ND[zone];
+        const ecoRates = LONGS_ECO[zone];
+        if (ndRates) {
+          const ndBase = ndRates[colIdx] * qty;
+          let surchargeTotal = 0;
+          if (surcharges.includes("am")) surchargeTotal += 15.63;
+          if (surcharges.includes("timed")) surchargeTotal += 26;
+          const ndBeforeFuel = ndBase + surchargeTotal;
+          result.nd = +(ndBeforeFuel * (1 + FUEL_SURCHARGE)).toFixed(2);
+          result.breakdown.nd = { base: ndBase, surcharges: surchargeTotal, fuel: +(ndBeforeFuel * FUEL_SURCHARGE).toFixed(2), note: `${qty} x 2FP estimate` };
+        }
+        if (ecoRates) {
+          const ecoBase = ecoRates[colIdx] * qty;
+          let surchargeTotal = 0;
+          if (surcharges.includes("am")) surchargeTotal += 15.63;
+          if (surcharges.includes("timed")) surchargeTotal += 26;
+          const ecoBeforeFuel = ecoBase + surchargeTotal;
+          result.eco = +(ecoBeforeFuel * (1 + FUEL_SURCHARGE)).toFixed(2);
+          result.breakdown.eco = { base: ecoBase, surcharges: surchargeTotal, fuel: +(ecoBeforeFuel * FUEL_SURCHARGE).toFixed(2), note: `${qty} x 2FP estimate` };
+        }
+        result.info.push(`Oversized: ${palletSize} = ${spaces} spaces x ${qty} = ${totalSpaces} total. Estimated as ${qty} x 2FP (£${LONGS_ND[zone]?.[5]}/ea ND).`);
+        result.zone = `Zone ${zone}`;
+        result.estimated = true;
+        return result;
       }
       result.info.push(`Oversized: ${palletSize} = ${spaces} spaces x ${qty} = ${totalSpaces} total. Using ${totalSpaces}FP combined column.`);
     } else {
