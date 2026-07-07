@@ -16,7 +16,7 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-                const { useState, useCallback, useMemo, useRef, useEffect } = React;
+                    const { useState, useCallback, useMemo, useRef, useEffect } = React;
 
 
 // ============ EMBEDDED RATE DATA ============
@@ -1154,7 +1154,7 @@ function RateLookupApp() {
   const haulier = useMemo(() => { const cp = COLLECTION_POINTS.find(c => c.id === collection); return cp ? cp.haulier : null; }, [collection]);
 
   const handleCollectionSelect = (id) => { setCollection(id); setResult(null); setShowCollectionPicker(false); if (!startTime) setStartTime(Date.now()); };
-  const toggleSurcharge = (id) => { setSelectedSurcharges(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]); };
+  const toggleSurcharge = (id) => { setSelectedSurcharges(prev => { if (prev.includes(id)) return prev.filter(s => s !== id); let next = [...prev, id]; if (id === 'am') next = next.filter(s => s !== 'timed'); if (id === 'timed') next = next.filter(s => s !== 'am'); return next; }); };
   const canCalculate = collection && postcode.length >= 2;
   const doCalculate = () => { if (!canCalculate) return; const allWeights = palletWeights.map(w => w ? parseInt(w) : 500); const maxWeight = Math.max(...allWeights); const r = calculateRate(haulier, postcode, palletSize, qty, maxWeight, selectedSurcharges, customW ? parseInt(customW) : null, customL ? parseInt(customL) : null, allWeights, collection); setResult(r); if (startTime) setElapsed(((Date.now() - startTime) / 1000).toFixed(1)); };
   const handleCopy = async (val, which) => { try { await navigator.clipboard.writeText(val.toFixed(2)); setCopied(which); setTimeout(() => setCopied(null), 1200); } catch {} };
@@ -1630,6 +1630,9 @@ function RateLookupApp() {
     </div>
   );
 }
+
+
+    ReactDOM.render(React.createElement(RateLookupApp), document.getElementById('root'));
 
 
     ReactDOM.render(React.createElement(RateLookupApp), document.getElementById('root'));
