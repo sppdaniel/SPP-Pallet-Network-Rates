@@ -16,7 +16,7 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-                    const { useState, useCallback, useMemo, useRef, useEffect } = React;
+                        const { useState, useCallback, useMemo, useRef, useEffect } = React;
 
 
 // ============ EMBEDDED RATE DATA ============
@@ -151,6 +151,7 @@ const FUEL_SURCHARGES = {
   "Longs of Leeds": 0.14,
   "TWA": 0.10,
   "Horizon (Austin Wilkinson)": 0.06,
+  "Pallex Essex": 0.14,
 };
 
 function getFuelSurcharge(haulier) {
@@ -164,6 +165,7 @@ const COLLECTION_POINTS = [
   { id: "latham", label: "James Latham Leeds", haulier: "Longs of Leeds", color: "#6B8C5A" },
   { id: "booker", label: "Booker Timber", haulier: "TWA", color: "#7A9A68" },
   { id: "landmark", label: "Landmark Joinery", haulier: "Horizon (Austin Wilkinson)", color: "#4A6340" },
+  { id: "tilbury", label: "Tilbury / Decor Solutions", haulier: "Pallex Essex", color: "#C13832" },
 ];
 
 const PALLET_SIZES = [
@@ -224,9 +226,9 @@ function getCustomOversizeInfo(wMm, lMm, haulier) {
 }
 
 const SURCHARGES = [
-  { id: "am", label: "AM Delivery", prices: { "CDL": 12, "Longs of Leeds": 15.63, "TWA": 7.50, "Horizon (Austin Wilkinson)": 10.50 } },
-  { id: "timed", label: "Timed Delivery", prices: { "CDL": 15, "Longs of Leeds": 26, "TWA": 15, "Horizon (Austin Wilkinson)": 17 } },
-  { id: "hand", label: "Hand Offload", prices: {} },
+  { id: "am", label: "AM Delivery", prices: { "CDL": 12, "Longs of Leeds": 15.63, "TWA": 7.50, "Horizon (Austin Wilkinson)": 10.50, "Pallex Essex": 18 } },
+  { id: "timed", label: "Timed Delivery", prices: { "CDL": 15, "Longs of Leeds": 26, "TWA": 15, "Horizon (Austin Wilkinson)": 17, "Pallex Essex": 23 } },
+  { id: "hand", label: "Hand Offload", prices: { "Pallex Essex": 25 } },
   { id: "small", label: "Small Vehicle", prices: {} },
 ];
 
@@ -247,7 +249,121 @@ const COURIER_POSTCODES = {
   "latham": ["WF","LS","YO","HG","HD","HX","BD","S","DN","OL","HU","BB","M","SK","BL","LN","DL","TS","NG","WN","PR","DE","WA","ST","CW","LA"],
   "booker": ["L","CH","WA","WN","BL","CW","PR","FY","M","SK","LL","OL","BB","ST","TF","SY","HX","HD","BD","LA","S","WV","WF","LS","WS"],
   "landmark": ["L","CH","WA","WN","BL","CW","M","SK","PR","FY","OL","BB","ST","LL","HX","HD","TF","BD","SY","S","WF","LA","WV","LS","DE","WS","DY"],
+  "tilbury": ["CM","SS","RM","IG","DA","ME","CO","CB","IP","EN","AL","LU","MK","SG","HP","E","N","NW","SE","SW","W","EC","WC","BR","CR","KT","SM","TW","UB","HA","SL","WD","GU","RH","BN","TN","CT"],
 };
+
+// ============ PALLEX ESSEX RATE DATA ============
+
+const PALLEX_FUEL = 0.14;
+
+// Standard Premium (Next Day): [MICRO, QUARTER, HALF, FULL_LIGHT, FULL, FULL_PLUS]
+const PALLEX_ND = {
+  "LOCAL":[32.50,35.50,37.00,40.00,40.50,42.00],
+  1:[44.46,45.46,48.46,49.96,51.46,56.51],
+  2:[44.96,45.96,49.46,52.21,53.71,59.10],
+  3:[45.96,46.96,51.21,54.71,56.21,61.97],
+  4:[47.46,48.46,52.46,56.71,58.21,64.27],
+  5:[50.46,51.46,54.46,57.96,59.46,65.71],
+  6:[57.21,58.21,59.21,63.46,64.96,72.04],
+  7:[59.71,60.71,61.71,68.96,70.46,78.36],
+  8:[62.09,63.09,68.14,75.45,76.95,85.82],
+  9:[64.46,65.46,70.36,77.76,79.26,88.48],
+  10:[67.21,68.21,73.11,80.61,82.11,91.76],
+  11:[85.96,86.96,88.96,89.46,90.96,101.94],
+  12:[98.15,99.15,100.23,105.78,107.28,120.70],
+  13:[101.15,102.15,103.23,108.78,110.28,124.15],
+  14:[86.84,87.84,93.44,101.52,103.02,115.80],
+  18:[91.46,92.46,95.46,96.46,98.21,110.27],
+  19:[95.46,96.46,99.46,100.46,102.96,115.74],
+  20:[94.46,96.96,99.46,101.96,104.46,116.21],
+  21:[104.46,106.96,109.46,114.46,116.96,128.71],
+  22:[93.56,94.72,100.49,110.60,112.34,126.52],
+  "12A":[95.65,96.65,97.73,103.28,104.78,117.83],
+  "13A":[119.01,119.01,119.01,119.01,119.01,134.19],
+  "INNER LONDON":[70.46,71.46,73.46,74.46,75.46,84.11],
+  "OUTER LONDON":[66.46,67.46,69.46,70.46,71.46,79.51],
+  "CENTRAL LONDON":[75.46,76.46,78.46,79.46,80.46,89.86],
+};
+
+// Standard Economy: [MICRO, QUARTER, HALF, FULL_LIGHT, FULL, FULL_PLUS]
+const PALLEX_ECO = {
+  "LOCAL":[32.00,33.00,34.00,35.00,36.50,38.00],
+  1:[42.46,43.46,44.46,46.46,47.96,52.49],
+  2:[43.46,44.46,45.21,47.46,48.96,53.64],
+  3:[44.46,45.46,46.71,49.21,50.71,55.65],
+  4:[46.46,47.46,48.46,50.21,51.71,56.80],
+  5:[48.46,49.46,51.46,51.96,53.46,58.81],
+  6:[55.21,56.21,57.21,57.46,58.21,64.27],
+  7:[57.71,58.71,59.71,60.46,61.21,67.72],
+  8:[60.06,61.06,62.00,65.51,67.01,74.39],
+  9:[61.96,62.96,63.88,67.66,69.16,76.87],
+  10:[64.46,65.46,66.38,70.16,71.66,79.74],
+  11:[83.96,84.96,86.96,87.46,88.96,99.64],
+  12:[90.75,91.75,94.32,95.75,97.25,109.17],
+  13:[96.75,97.75,100.32,101.75,103.25,116.07],
+  14:[81.57,82.57,83.57,87.20,88.70,99.34],
+  15:[113.77,114.77,116.77,122.77,124.27,220.83],
+  16:[138.43,139.43,141.68,143.15,144.65,261.59],
+  17:[157.46,157.46,157.46,157.46,157.46,287.21],
+  18:[85.96,86.71,88.96,90.46,92.46,103.66],
+  19:[88.46,90.71,93.96,94.46,96.46,108.26],
+  22:[87.50,88.66,94.72,98.76,100.49,112.90],
+  23:[117.71,118.71,128.96,132.46,133.96,151.39],
+  "12A":[88.25,89.25,91.82,93.25,94.75,106.29],
+  "13A":[116.81,116.81,116.81,116.81,116.81,131.66],
+  "16A":[155.43,156.43,158.68,160.15,161.65,295.59],
+  "17A":[206.96,206.96,206.96,206.96,206.96,386.21],
+  "INNER LONDON":[67.46,68.46,70.46,71.46,72.46,81.16],
+  "OUTER LONDON":[62.46,63.46,65.46,67.46,68.46,76.06],
+  "CENTRAL LONDON":[72.46,73.46,75.46,76.46,77.46,86.41],
+};
+
+// Pallex zone postcodes: [zone, postcodes]
+const PALLEX_ZONES = [
+  ["LOCAL","CM0-6, CM8-15, CM99, RM13, RM16-20, SS12-14"],
+  [1,"B, CV, CW, DE, DY, LE, NG, NN, ST, TF, WS, WV"],
+  [2,"BB, BD, BL, DN1-22, DN55, HD, HX, L, LS, M, OL, PR, S1-26, S35, S40-98, SK1-8, WA, WF, WN"],
+  [3,"CH, DN31-41, LN1-6, MK, PE1-19, PE26-29, WR"],
+  [4,"AL, BS1-21, BS32-37, BS98-99, GL, HP, HR, HU, LU, NP, OX5-7, OX15-17, OX20-27, PE30-38, S32-33, S36, SK9-23"],
+  [5,"BS22-31, BS39-49, CF, CO, HG, IP, LN7-13, OX1-4, OX9-14, OX18, OX28-49, PE20-25, SG, SL1-2, SL4-9, SN, SS0-11, SS15-99, WD"],
+  [6,"BA, BH, CB, CM7, CM17-77, DA3-4, DA9-13, DH, DL, FY, LA, LL11-14, LL20, ME, NE1-18, NE20-42, NE82-99, NR, RG, SO, SR, SY1-6, SY8, TS, YO1-12, YO14-17, YO19, YO23-26"],
+  [7,"CT, GU, KT23-24, NE19, NE43-71, PO1-22, RH, SP"],
+  [8,"BN, CA1-4, CA8-13, CA16-27, CA95, DT, LD, LL15-19, LL21-78, SA1-18, SY7, SY9-17, SY21-22, TN1-13, TN15, TN17-40, YO13, YO18, YO21-22, YO30-90"],
+  [9,"EX, PL, SA19-99, SY18-20, SY23-25, TA, TQ1-5, TQ12-14"],
+  [10,"CA5-7, CA14-15, CA28, DG1-2, DG10-16, EH1-30, EH37-38, EH43-99, FK1-9, G1-82, KA1-3, KA11-17, KA20-25, KA29-30, KY1-5, KY11-12, KY99, ML1-9, PA1-4, TD1-10, TQ6-11"],
+  [11,"DG3-9, EH31-36, EH39-42, FK10-21, G83-84, KA4-10, KA18, KY6-10, KY13-16, ML10-12, PA5-19, TD11-15"],
+  [12,"AB, KA19, KA26, PH8-13"],
+  [13,"IV1-20, IV30-36, PH19-32, PH34-35"],
+  [14,"DD, PH1-7, PH14-18"],
+  [15,"IV40-56"],
+  [16,"HS, KA27-28"],
+  [17,"KW15-16, KW17, ZE1-3"],
+  [18,"BT1-23, BT36-40"],
+  [19,"BT24-35, BT41-94"],
+  [20,"A41-45, A94-96, D6, D, K"],
+  [21,"A63-92, A98, C, E21-91, F, H, N37-91, P, R, T, V, W23-91, X, Y"],
+  [22,"PO30-41"],
+  [23,"GY, IM, JE"],
+  ["12A","TR"],
+  ["13A","IV21-28, IV63, KW1-14, PA21-38, PH33, PH36-41, PH49-50"],
+  ["16A","PA20, PA41-80, PH42-44"],
+  ["17A","KW16, KW17, ZE2"],
+  ["INNER LONDON","E2-3, E5-20, E98, N1-2, N4-8, N10-11, N13, N15-19, N22, NW1-3, NW5-6, NW8, NW10-11, SE3-4, SE6-10, SE12-14, SE18-19, SE21-24, SE26-27, SW2, SW5-6, SW12-19, W3-4, W6, W8-12, W14"],
+  ["OUTER LONDON","BR, CM16, CR, DA1-2, DA5-8, DA14-18, E4, EN, HA, IG, KT1-22, N3, N9, N12, N14, N20-21, NW4, NW7, NW9, RM1-12, RM14-15, SE2, SE20, SE25, SE28, SL0, SL3, SM, SW20, TN14, TN16, TW, UB, W5, W7, W13"],
+  ["CENTRAL LONDON","E1, EC1-4, SE1, SE5, SE11, SE15-17, SW1, SW3-4, SW7-11, W1-2, WC1-2"],
+];
+
+// Pallex pallet type from weight: <600kg = Half (idx 2), >=600kg = Full (idx 4)
+function getPallexTypeIndex(weight) {
+  return weight >= 600 ? 4 : 2;
+}
+
+function matchPallexZone(postcode) {
+  for (const z of PALLEX_ZONES) {
+    if (postcodeMatchesString(postcode, z[1])) return z;
+  }
+  return null;
+}
 
 // ============ POSTCODE MATCHING ============
 
@@ -857,10 +973,93 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
       if (ecoCalc) { result.eco = ecoCalc.total; result.breakdown.eco = ecoCalc; }
       else { result.breakdown.ecoNote = "Economy not available for this zone"; }
     }
+  } else if (haulier === "Pallex Essex") {
+    const z = matchPallexZone(postcode);
+    if (!z) { result.errors.push("Postcode not found in Pallex Essex zones"); return result; }
+    const zoneName = z[0];
+    result.zone = typeof zoneName === 'number' ? `Zone ${zoneName}` : zoneName;
+
+    // Determine pallet type index: <600kg = Half (2), >=600kg = Full (4)
+    const typeIdx = weightKg >= 600 ? 4 : 2;
+    const typeName = weightKg >= 600 ? "Full" : "Half";
+
+    // Oversized: 8x4 booked as 2.4m x 1.2m = Rate + 100% (2x base)
+    let oversizedMultiplier = 1;
+    let oversizedNote = "";
+    if (palletSize === "8x4") {
+      oversizedMultiplier = 2;
+      oversizedNote = "8x4 (2.4m x 1.2m) = Rate + 100%";
+    } else if (palletSize === "10x4") {
+      // 3.0m x 1.2m: width 120cm, length 300cm = Rate + 175% to Rate + 200%
+      oversizedMultiplier = 3;
+      oversizedNote = "10x4 (3.0m x 1.2m) = Rate + 200%";
+    } else if (palletSize === "10x5") {
+      // 3.0m x 1.5m: width 150cm, length 300cm = Rate + 300%
+      oversizedMultiplier = 4;
+      oversizedNote = "10x5 (3.0m x 1.5m) = Rate + 300%";
+    } else if (palletSize === "5x5") {
+      // 1.525m x 1.525m: width 152cm, length 152cm = Rate + 75% ≈ 1.75x
+      oversizedMultiplier = 1.75;
+      oversizedNote = "5x5 (1.525m x 1.525m) = Rate + 75%";
+    } else if (palletSize === "4x4") {
+      oversizedMultiplier = 1;
+      oversizedNote = "";
+    } else if (palletSize === "custom" && customW && customL) {
+      const ow = getOversizedMultiplier(customW, customL);
+      oversizedMultiplier = ow.multiplier;
+      oversizedNote = `Custom ${ow.note} = Rate + ${Math.round((ow.multiplier - 1) * 100)}%`;
+    }
+    if (oversizedNote) result.info.push(`Oversized: ${oversizedNote}`);
+
+    const FUEL_SURCHARGE = getFuelSurcharge(haulier);
+    result.fuelPct = FUEL_SURCHARGE * 100;
+
+    // Calculate surcharges
+    let surchargeTotal = 0;
+    if (surcharges.includes("am")) surchargeTotal += 18;
+    if (surcharges.includes("timed")) surchargeTotal += 23;
+    if (surcharges.includes("hand")) surchargeTotal += 25 * qty;
+
+    // Next Day
+    const ndRates = PALLEX_ND[zoneName];
+    if (ndRates) {
+      const baseRate = ndRates[typeIdx];
+      const ndPerPallet = baseRate * oversizedMultiplier;
+      const ndTotal = ndPerPallet * qty;
+      const ndBeforeFuel = ndTotal + surchargeTotal;
+      result.nd = +(ndBeforeFuel * (1 + FUEL_SURCHARGE)).toFixed(2);
+      result.breakdown.nd = { base: +ndTotal.toFixed(2), surcharges: surchargeTotal, fuel: +(ndBeforeFuel * FUEL_SURCHARGE).toFixed(2), note: `${typeName} £${baseRate} x ${oversizedMultiplier} x ${qty}` };
+    } else {
+      result.info.push("Next Day not available for this zone");
+    }
+
+    // Economy
+    const ecoRates = PALLEX_ECO[zoneName];
+    if (ecoRates) {
+      const baseRate = ecoRates[typeIdx];
+      const ecoPerPallet = baseRate * oversizedMultiplier;
+      const ecoTotal = ecoPerPallet * qty;
+      const ecoBeforeFuel = ecoTotal + surchargeTotal;
+      result.eco = +(ecoBeforeFuel * (1 + FUEL_SURCHARGE)).toFixed(2);
+      result.breakdown.eco = { base: +ecoTotal.toFixed(2), surcharges: surchargeTotal, fuel: +(ecoBeforeFuel * FUEL_SURCHARGE).toFixed(2), note: `${typeName} £${ecoRates[typeIdx]} x ${oversizedMultiplier} x ${qty}` };
+    } else {
+      result.info.push("Economy not available for this zone");
+    }
+
+    // Zones 15,16,17,23: Economy only
+    if ([15,16,17,23].includes(zoneName)) {
+      result.nd = null;
+      result.breakdown.nd = null;
+    }
+    // Zones 20,21: Next Day only
+    if ([20,21].includes(zoneName)) {
+      result.eco = null;
+      result.breakdown.eco = null;
+    }
   }
   
-  // Surcharge warnings
-  if (surcharges.includes("hand") && haulier !== "CDL") {
+  // Surcharge warnings - update hand offload check
+  if (surcharges.includes("hand") && haulier !== "CDL" && haulier !== "Pallex Essex") {
     result.warnings.push(`Hand offload: Not standard on ${haulier}'s rate sheet. Check with haulier.`);
   }
   if (surcharges.includes("small")) {
@@ -1196,7 +1395,7 @@ function RateLookupApp() {
       <div style={styles.header}>
         <div style={styles.logo}>SPP</div>
         <div style={styles.title}>Transport Rates</div>
-        <div style={styles.subtitle}>CDL {(FUEL_SURCHARGES["CDL"]*100).toFixed(0)}% | Longs {(FUEL_SURCHARGES["Longs of Leeds"]*100).toFixed(1)}% | TWA {(FUEL_SURCHARGES["TWA"]*100).toFixed(0)}% | Horizon {(FUEL_SURCHARGES["Horizon (Austin Wilkinson)"]*100).toFixed(0)}% | Imm {(IMM_FUEL*100).toFixed(0)}%</div>
+        <div style={styles.subtitle}>CDL {(FUEL_SURCHARGES["CDL"]*100).toFixed(0)}% | Longs {(FUEL_SURCHARGES["Longs of Leeds"]*100).toFixed(1)}% | TWA {(FUEL_SURCHARGES["TWA"]*100).toFixed(0)}% | Horizon {(FUEL_SURCHARGES["Horizon (Austin Wilkinson)"]*100).toFixed(0)}% | Pallex {(FUEL_SURCHARGES["Pallex Essex"]*100).toFixed(0)}% | Imm {(IMM_FUEL*100).toFixed(0)}%</div>
       </div>
 
       <div style={{ display: 'flex', marginBottom: 16, borderBottom: '1px solid var(--border, #e2e8f0)' }}>
@@ -1270,7 +1469,7 @@ function RateLookupApp() {
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>Delivery postcode</div>
                 <div style={{ position: 'relative' }}>
-                  <input ref={postcodeRef} style={{...styles.input, fontSize: 20, padding: '14px 16px', fontWeight: 600, borderColor: postcode.length >= 2 && !(() => { if (haulier === 'CDL') return matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO); if (haulier && haulier.startsWith('Horizon')) return matchHorizonZone(postcode); return true; })() ? '#EF4444' : '#537044', borderWidth: '2px'}} value={postcode} onChange={e => setPostcode(e.target.value.toUpperCase())} onKeyDown={handleKeyDown} maxLength={8} />
+                  <input ref={postcodeRef} style={{...styles.input, fontSize: 20, padding: '14px 16px', fontWeight: 600, borderColor: postcode.length >= 2 && !(() => { if (haulier === 'CDL') return matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO); if (haulier && haulier.startsWith('Horizon')) return matchHorizonZone(postcode); if (haulier === 'Pallex Essex') return matchPallexZone(postcode); return true; })() ? '#EF4444' : '#537044', borderWidth: '2px'}} value={postcode} onChange={e => setPostcode(e.target.value.toUpperCase())} onKeyDown={handleKeyDown} maxLength={8} />
                   <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: postcode.length >= 2 ? '#537044' : '#e2e8f0' }}>→</div>
                 </div>
                 {postcode.length >= 2 && (() => {
@@ -1280,6 +1479,7 @@ function RateLookupApp() {
                   else if (haulier === 'Longs of Leeds') { const z = matchLongsZone(postcode); zone = z !== null ? 'Zone ' + z : null; }
                   else if (haulier === 'TWA') { const r = matchTWAZone(postcode, TWA_ND); zone = r ? 'Zone ' + r[0] : null; }
                   else if (haulier && haulier.startsWith('Horizon')) { const r = matchHorizonZone(postcode); zone = r ? r[0] : null; }
+                  else if (haulier === 'Pallex Essex') { const z = matchPallexZone(postcode); zone = z ? (typeof z[0] === 'number' ? 'Zone ' + z[0] : z[0]) : null; }
                   if (zone && estimated) return <div style={{ padding: '6px 10px', borderRadius: 8, background: '#FFFBEB', border: '1px solid #FED7AA', fontSize: 13, color: '#92400E', fontWeight: 500, marginTop: 6 }}>{zone} — not on rate sheet, based on best estimate</div>;
                   if (zone) return <div style={{ padding: '6px 10px', borderRadius: 8, background: '#EDF5EB', fontSize: 13, color: '#537044', fontWeight: 500, marginTop: 6 }}>{zone}</div>;
                   return <div style={{ padding: '8px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', fontSize: 13, marginTop: 6 }}>{postcode.toUpperCase()} not found in {haulier} zones</div>;
@@ -1287,7 +1487,7 @@ function RateLookupApp() {
               </div>
 
               {/* Rest of form - only shows after valid postcode entered */}
-              {postcode.length >= 2 && (() => { if (haulier === 'CDL') return !!matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return !!(matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO)); if (haulier && haulier.startsWith('Horizon')) return !!matchHorizonZone(postcode); return false; })() && (<>
+              {postcode.length >= 2 && (() => { if (haulier === 'CDL') return !!matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return !!(matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO)); if (haulier && haulier.startsWith('Horizon')) return !!matchHorizonZone(postcode); if (haulier === 'Pallex Essex') return !!matchPallexZone(postcode); return false; })() && (<>
                 <div style={styles.step}><div style={styles.stepLabel}>Pallet size</div>
                   <div style={{...styles.btn(palletSize === '8x4', '#537044'), marginBottom: 8, textAlign: 'center'}} onClick={() => setPalletSize('8x4')}>
                     <div style={{...styles.btnLabel, textAlign: 'center', fontSize: 16}}>8x4</div>
@@ -1630,6 +1830,9 @@ function RateLookupApp() {
     </div>
   );
 }
+
+
+    ReactDOM.render(React.createElement(RateLookupApp), document.getElementById('root'));
 
 
     ReactDOM.render(React.createElement(RateLookupApp), document.getElementById('root'));
