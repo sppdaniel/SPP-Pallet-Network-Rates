@@ -376,10 +376,20 @@ function matchPallexZone(postcode) {
 // ============ POSTCODE MATCHING ============
 
 function extractPostcodeArea(pc) {
-  const clean = pc.toUpperCase().replace(/\s+/g, '');
-  const m = clean.match(/^([A-Z]{1,2})(\d+)/);
-  if (!m) return { area: clean.replace(/\d.*/, ''), district: null };
-  return { area: m[1], district: parseInt(m[2]) };
+  let clean = pc.toUpperCase().trim();
+  // Keep only the outward code if a full postcode was typed with a space (e.g. "M1 1AA" -> "M1")
+  const sp = clean.split(/\s+/);
+  clean = sp[0];
+  // Full postcode typed without a space (e.g. "M11AA"): strip the inward part (digit + 2 letters)
+  if (sp.length === 1 && clean.length > 4 && /\d[A-Z]{2}$/.test(clean)) clean = clean.replace(/\d[A-Z]{2}$/, '');
+  // Valid UK outward format: 1-2 letters + 1-2 digits + optional trailing letter (SW1A, N1C)
+  const m = clean.match(/^([A-Z]{1,2})(\d{1,2})([A-Z])?$/);
+  if (m) return { area: m[1], district: parseInt(m[2]) };
+  // Bare area letters only (partial typing, e.g. "PL")
+  const a = clean.match(/^([A-Z]{1,2})$/);
+  if (a) return { area: a[1], district: null };
+  // Anything else (PL293748, 123, M1X9...) is not a valid postcode
+  return { area: null, district: null, invalid: true };
 }
 
 // Shared smart postcode parser: handles "BA3,5,8-11,13-15, CB, CF" by carrying
@@ -652,6 +662,16 @@ function getOversizeInfo(palletSize, haulier, customW, customL) {
 }
 
 function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges, customW, customL, allWeights, collectionId) {
+  // Input sanity guards (mis-typed jobs)
+  {
+    const _r = { zone: null, nd: null, eco: null, breakdown: {}, warnings: [], errors: [], info: [], courier: null, estimated: false, fuelPct: 0 };
+    if (!qty || qty < 1) { _r.errors.push("Pallet quantity must be at least 1."); return _r; }
+    if (palletSize === "custom") {
+      const _cw = parseFloat(customW), _cl = parseFloat(customL);
+      if (!_cw || !_cl || _cw < 100 || _cl < 100) { _r.errors.push("Custom dimensions look wrong — enter width and length in mm (e.g. 2440 x 1220)."); return _r; }
+      if (_cw > 4000 || _cl > 4000) { _r.errors.push("Custom dimensions exceed 4000mm — check the figures. If correct, this needs a manual haulier quote."); return _r; }
+    }
+  }
   const result = { nd: null, eco: null, zone: null, breakdown: {}, warnings: [], errors: [], info: [] };
   const FUEL_SURCHARGE = getFuelSurcharge(haulier);
   result.fuelPct = (FUEL_SURCHARGE * 100);
@@ -743,6 +763,10 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
       else if (totalSpaces <= 5) colIdx = 8;
       else colIdx = 9;
       
+      if (spaces > 6) {
+        result.errors.push(`A single ${palletSize === 'custom' ? customW + ' x ' + customL + 'mm' : palletSize} pallet is ${spaces} pallet spaces — outside the Longs rate card. Check the dimensions or contact Longs for a quote.`);
+        return result;
+      }
       if (totalSpaces > 6) {
         result.warnings.push(`${totalSpaces} pallet spaces exceeds 6 FP max on Longs rate card. Contact Longs for quotation. Estimate below based on 2FP x ${qty} pallets.`);
         // Estimate: use 2FP column (index 5) x number of pallets
@@ -1268,6 +1292,13 @@ function calcImmingham(postcode, lines, handball) {
   const volWeight = (footprintM2 / 2.4) * 2000 * totalStacks;
 
   const chargeableWeight = Math.max(totalActualWeight, volWeight);
+  // Guard: any active line with 0 pallets is a mis-type
+  for (const ln of lines) {
+    if (ln.material && ln.sheets && ln.thickness && (!parseInt(ln.pallets) || parseInt(ln.pallets) < 1)) {
+      result.errors.push("Pallet count must be at least 1 on every product line.");
+      return result;
+    }
+  }
   const bracketWeight = Math.ceil(chargeableWeight / 1000) * 1000;
 
   if (bracketWeight <= 0) { result.errors.push("Weight calculates to zero. Check your inputs."); return result; }
@@ -1458,7 +1489,8 @@ function RateLookupApp() {
                     else if (haulier === 'Pallex Essex') { const z = matchPallexZone(postcode); zone = z ? (typeof z[0] === 'number' ? 'Zone ' + z[0] : z[0]) : null; }
                     if (zone && estimated) return <span style={{ padding: '7px 14px', borderRadius: 20, background: '#fdf3e7', border: '1px solid #eedbbd', fontSize: 13, color: '#b87020', fontWeight: 600, whiteSpace: 'nowrap' }}>{zone} — estimate</span>;
                     if (zone) return <span style={{ padding: '7px 14px', borderRadius: 20, background: '#e8f5ec', border: '1px solid #cce8d6', fontSize: 13, color: '#007835', fontWeight: 700, whiteSpace: 'nowrap' }}>{zone}</span>;
-                    return <span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>Not found in {haulier} zones</span>;
+                    const inv = extractPostcodeArea(postcode).invalid;
+                    return <span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>{inv ? 'Not a valid postcode' : 'Not found in ' + haulier + ' zones'}</span>;
                   })()}
                 </div>
               </div>
@@ -1605,7 +1637,7 @@ function RateLookupApp() {
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <input style={{...styles.input, width: 180, fontSize: 17, padding: '10px 14px', fontWeight: 600, borderColor: immPostcode.length >= 2 && !matchImmZone(immPostcode) ? '#b5471c' : immPostcode.length >= 2 && isImmROR(immPostcode) ? '#b87020' : '#007835', borderWidth: '1.5px'}} value={immPostcode} onChange={e => setImmPostcode(e.target.value.toUpperCase())} maxLength={8} onKeyDown={e => { if (e.key === 'Enter' && immPostcode.length >= 2) doImmCalc(); }} placeholder="e.g. DN40" />
                   {immPostcode.length >= 2 && isImmROR(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>Rate on Request — contact Immingham</span>)}
-                  {immPostcode.length >= 2 && !isImmROR(immPostcode) && !matchImmZone(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>Not found in Immingham zones</span>)}
+                  {immPostcode.length >= 2 && !isImmROR(immPostcode) && !matchImmZone(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>{extractPostcodeArea(immPostcode).invalid ? 'Not a valid postcode' : 'Not found in Immingham zones'}</span>)}
                   {immPostcode.length >= 2 && !isImmROR(immPostcode) && matchImmZone(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#e8f5ec', border: '1px solid #cce8d6', fontSize: 13, color: '#007835', fontWeight: 700 }}>{matchImmZone(immPostcode)}</span>)}
                 </div>
               </div>
