@@ -198,10 +198,24 @@ function calcPalletSpaces(wMm, lMm) {
 }
 
 // Get oversized multiplier for custom dims on TWA/Horizon
+// Pallex custom dims: map to the nearest known Pallex size category (conservative - rounds up)
+function getPallexOversizeMultiplier(wMm, lMm) {
+  const l = Math.max(wMm, lMm), w = Math.min(wMm, lMm);
+  if (l <= 1220 && w <= 1220) return { multiplier: 1, note: "(fits standard footprint)" };
+  if (l <= 1525 && w <= 1525) return { multiplier: 1.75, note: "(within 1525 x 1525mm, charged as 5x5)" };
+  if (w <= 1220 && l <= 2440) return { multiplier: 2, note: "(within 2440 x 1220mm, charged as 8x4)" };
+  if (w <= 1220 && l <= 3050) return { multiplier: 3, note: "(within 3050 x 1220mm, charged as 10x4)" };
+  if (w <= 1525 && l <= 3050) return { multiplier: 4, note: "(within 3050 x 1525mm, charged as 10x5)" };
+  return null; // outside known Pallex size categories
+}
+
 function getCustomOversizeInfo(wMm, lMm, haulier) {
-  // Use the oversized matrix: width (shorter side) x length (longer side) in cm
-  const widthCm = Math.min(wMm, lMm) / 10;
-  const lengthCm = Math.max(wMm, lMm) / 10;
+  // Hauliers book standard sheet dims rounded down (3.05m -> 3.0m, 2.44m -> 2.4m, 1.22m -> 1.2m),
+  // so apply the same shave before banding. 1525 is kept as-is per the booking convention.
+  const shave = v => ({ 610: 600, 1220: 1200, 1830: 1800, 2440: 2400, 3050: 3000 }[v] || v);
+  // Matrix bands are in decimetres (12 = 1.2m), matching the haulier oversized matrices
+  const widthDm = shave(Math.min(wMm, lMm)) / 100;
+  const lengthDm = shave(Math.max(wMm, lMm)) / 100;
   
   // TWA matrix breakpoints
   const twaWidthBands = [[0,12,0],[12.1,15,0.25],[15.1,18,0.50],[18.1,21,0.75],[21.1,24,1.0]];
@@ -217,10 +231,10 @@ function getCustomOversizeInfo(wMm, lMm, haulier) {
   
   let wPct = null, lPct = null;
   for (const [lo, hi, pct] of widthBands) {
-    if (widthCm >= lo && widthCm <= hi) { wPct = pct; break; }
+    if (widthDm >= lo && widthDm <= hi) { wPct = pct; break; }
   }
   for (const [lo, hi, pct] of lengthBands) {
-    if (lengthCm >= lo && lengthCm <= hi) { lPct = pct; break; }
+    if (lengthDm >= lo && lengthDm <= hi) { lPct = pct; break; }
   }
   
   if (wPct === null || lPct === null) return null; // N/A
@@ -230,7 +244,7 @@ function getCustomOversizeInfo(wMm, lMm, haulier) {
   
   const multiplier = 1 + totalPct;
   const label = "STR + " + Math.round(totalPct * 100) + "%";
-  return { multiplier, label, note: widthCm.toFixed(0) + "x" + lengthCm.toFixed(0) + "cm" };
+  return { multiplier, label, note: (widthDm*10).toFixed(0) + "x" + (lengthDm*10).toFixed(0) + "cm" };
 }
 
 const SURCHARGES = [
@@ -512,21 +526,30 @@ function matchTWAZone(postcode, rateTable) {
 function matchLongsZone(postcode) {
   const { area, district } = extractPostcodeArea(postcode);
   
-  // LONGS_ZONE_LIST is pre-expanded: each entry is a single pattern like "CM17-24"
+  // Match with specificity precedence: exact district > range > bare area.
+  // Rate cards list broad ranges with specific carve-outs (e.g. N1-11 -> Z10 but N3 -> Z9),
+  // so the most specific matching pattern wins regardless of list order.
+  let best = null; // { zone, specificity }
   for (const [pattern, zone] of LONGS_ZONE_LIST) {
     const rm = pattern.match(/^([A-Z]+)(\d+)-(\d+)$/);
     if (rm) {
-      if (rm[1] === area && district !== null && district >= parseInt(rm[2]) && district <= parseInt(rm[3])) return zone;
+      if (rm[1] === area && district !== null && district >= parseInt(rm[2]) && district <= parseInt(rm[3])) {
+        if (!best || best.specificity < 2) best = { zone, specificity: 2 };
+      }
       continue;
     }
     const sm = pattern.match(/^([A-Z]+)(\d+)$/);
     if (sm) {
-      if (sm[1] === area && district !== null && district === parseInt(sm[2])) return zone;
+      if (sm[1] === area && district !== null && district === parseInt(sm[2])) {
+        return zone; // exact match is the highest specificity - return immediately
+      }
       continue;
     }
-    if (pattern === area) return zone;
+    if (pattern === area) {
+      if (!best) best = { zone, specificity: 1 };
+    }
   }
-  return null;
+  return best ? best.zone : null;
 }
 
 function matchHorizonZone(postcode) {
@@ -556,22 +579,26 @@ function findAllLongsMatches(postcode) {
   const matches = [];
   const seenZones = new Set();
   for (const [pattern, zone] of LONGS_ZONE_LIST) {
-    if (seenZones.has(zone)) {
-      // Check if this pattern also matches -- if so, it's the same zone, not a conflict
-      // We only care about distinct zone numbers
-    }
     let hit = false;
+    let specificity = 0; // 3 = exact district, 2 = range, 1 = bare area
     const rm = pattern.match(/^([A-Z]+)(\d+)-(\d+)$/);
-    if (rm) { hit = rm[1] === area && district !== null && district >= parseInt(rm[2]) && district <= parseInt(rm[3]); }
+    if (rm) { hit = rm[1] === area && district !== null && district >= parseInt(rm[2]) && district <= parseInt(rm[3]); specificity = 2; }
     else {
       const sm = pattern.match(/^([A-Z]+)(\d+)$/);
-      if (sm) { hit = sm[1] === area && district !== null && district === parseInt(sm[2]); }
-      else { hit = pattern === area; }
+      if (sm) { hit = sm[1] === area && district !== null && district === parseInt(sm[2]); specificity = 3; }
+      else { hit = pattern === area; specificity = 1; }
     }
     if (hit && !seenZones.has(zone)) {
       seenZones.add(zone);
-      matches.push({ zone, pattern });
+      matches.push({ zone, pattern, specificity });
     }
+  }
+  // Specificity precedence: an exact-district entry is an intentional carve-out from a broader
+  // range or bare-area entry, not a data conflict. Only report entries at the HIGHEST
+  // specificity level that matched; a conflict now means two same-specificity entries disagree.
+  if (matches.length > 1) {
+    const maxSpec = Math.max(...matches.map(m => m.specificity));
+    return matches.filter(m => m.specificity === maxSpec);
   }
   return matches;
 }
@@ -638,6 +665,14 @@ function getOversizeInfo(palletSize, haulier, customW, customL) {
   const isHorizon = haulier.startsWith("Horizon");
   
   if (palletSize === "custom" && customW && customL) {
+    // If the custom dims match a named size, use the named-size rules so custom
+    // and named quotes can never disagree (e.g. TWA 3050x1220 must stay N/A like 10x4)
+    const w = Math.min(parseFloat(customW), parseFloat(customL));
+    const l = Math.max(parseFloat(customW), parseFloat(customL));
+    if (l === 2440 && w === 1220) return getOversizeInfo("8x4", haulier);
+    if (l === 1525 && w === 1525) return getOversizeInfo("5x5", haulier);
+    if (l === 3050 && w === 1220) return getOversizeInfo("10x4", haulier);
+    if (l === 3050 && w === 1525) return getOversizeInfo("10x5", haulier);
     return getCustomOversizeInfo(customW, customL, haulier);
   }
   if (palletSize === "8x4") {
@@ -1037,9 +1072,14 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
       oversizedMultiplier = 1;
       oversizedNote = "";
     } else if (palletSize === "custom" && customW && customL) {
-      const ow = getOversizedMultiplier(customW, customL);
+      const ow = getPallexOversizeMultiplier(parseFloat(customW), parseFloat(customL));
+      if (!ow) {
+        result.errors.push(`Custom size ${customW} x ${customL}mm is outside the Pallex size categories. Contact Pallex for a manual quote.`);
+        return result;
+      }
       oversizedMultiplier = ow.multiplier;
-      oversizedNote = `Custom ${ow.note} = Rate + ${Math.round((ow.multiplier - 1) * 100)}%`;
+      oversizedNote = `Custom ${ow.note} = Rate x ${ow.multiplier}`;
+      result.info.push("Custom size mapped to the nearest Pallex category (rounded up) — verify with Pallex if borderline.");
     }
     if (oversizedNote) result.info.push(`Oversized: ${oversizedNote}`);
 
@@ -1836,7 +1876,7 @@ function RateLookupApp() {
                 <div style={{ marginTop: 6 }}>
                   <div style={styles.breakdown}>
                     <div>Actual: {immResult.breakdown.actualWeight}kg | Volumetric: {immResult.breakdown.volWeight}kg | Charged at: {immResult.breakdown.bracketWeight}kg bracket</div>
-                    <div>Base rate: £{immResult.breakdown.baseRate.toFixed(2)}{immResult.breakdown.handballCharge > 0 ? ' + £20 handball' : ''} + £{immResult.breakdown.fuelCharge} fuel ({(IMM_FUEL*100).toFixed(0)}%). Excl. VAT.</div>
+                    {(!immResult.warnings || immResult.warnings.length === 0) && <div>Base rate: £{immResult.breakdown.baseRate.toFixed(2)}{immResult.breakdown.handballCharge > 0 ? ' + £20 handball' : ''} + £{immResult.breakdown.fuelCharge} fuel ({(IMM_FUEL*100).toFixed(0)}%). Excl. VAT.</div>}
                   </div>
                   {immResult.info.length > 0 && <div style={{ marginTop: 8 }}>{immResult.info.map((n, i) => (<div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: '#f1f9f3', border: '1px solid #cce8d6', color: '#3D5332', fontSize: 13, marginTop: i > 0 ? 4 : 0, lineHeight: 1.5 }}>{n}</div>))}</div>}
                 </div>
