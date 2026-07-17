@@ -389,6 +389,24 @@ function matchPallexZone(postcode) {
 
 // ============ POSTCODE MATCHING ============
 
+// Clean pasted postcode input. Accepts bare postcodes, full postcodes, or whole address
+// lines copied from the Hub - extracts the last UK-postcode-looking token (addresses end
+// with the postcode). Normal short typing passes through untouched apart from uppercasing.
+function cleanPostcodeInput(raw) {
+  let v = (raw || "").toUpperCase();
+  if (v.length > 9 || v.indexOf(",") !== -1 || v.trim().split(/\s+/).length > 2) {
+    const ms = Array.from(v.matchAll(/[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}|[A-Z]{1,2}\d{1,2}[A-Z]?/g));
+    if (ms.length) {
+      // Prefer a complete postcode (with inward part) over outward-only tokens,
+      // so road numbers like "M25" after the postcode can't win
+      const fulls = ms.filter(m => /\d[A-Z]{2}$/.test(m[0].replace(/\s+/g, "")) && m[0].replace(/\s+/g, "").length >= 5);
+      v = (fulls.length ? fulls[fulls.length - 1] : ms[ms.length - 1])[0];
+    }
+  }
+  v = v.replace(/\s+/g, " ").replace(/[^A-Z0-9 ]/g, "").replace(/\s+/g, " ").trimStart();
+  return v.slice(0, 9);
+}
+
 function extractPostcodeArea(pc) {
   let clean = pc.toUpperCase().trim();
   // Keep only the outward code if a full postcode was typed with a space (e.g. "M1 1AA" -> "M1")
@@ -1704,7 +1722,7 @@ function RateLookupApp() {
               <div style={{ marginBottom: 18 }}>
                 <div style={styles.stepLabel}>Delivery postcode</div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <input ref={postcodeRef} style={{...styles.input, width: 180, fontSize: 17, padding: '10px 14px', fontWeight: 600, borderColor: postcode.length >= 2 && !(() => { if (haulier === 'CDL') return matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO); if (haulier && haulier.startsWith('Horizon')) return matchHorizonZone(postcode); if (haulier === 'Pallex Essex') return matchPallexZone(postcode); return true; })() ? '#b5471c' : '#007835', borderWidth: '1.5px'}} value={postcode} onChange={e => setPostcode(e.target.value.toUpperCase())} onKeyDown={handleKeyDown} maxLength={8} placeholder="e.g. M1" />
+                  <input ref={postcodeRef} style={{...styles.input, width: 180, fontSize: 17, padding: '10px 14px', fontWeight: 600, borderColor: postcode.length >= 2 && !(() => { if (haulier === 'CDL') return matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO); if (haulier && haulier.startsWith('Horizon')) return matchHorizonZone(postcode); if (haulier === 'Pallex Essex') return matchPallexZone(postcode); return true; })() ? '#b5471c' : '#007835', borderWidth: '1.5px'}} value={postcode} onChange={e => setPostcode(cleanPostcodeInput(e.target.value))} onKeyDown={handleKeyDown} placeholder="e.g. M1 or full postcode" />
                   {postcode.length >= 2 && (() => {
                     let zone = null;
                     let estimated = false;
@@ -1863,7 +1881,7 @@ function RateLookupApp() {
               <div style={{ marginBottom: 18 }}>
                 <div style={styles.stepLabel}>First part of postcode <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontStyle: 'italic' }}>(e.g. DN40)</span></div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <input style={{...styles.input, width: 180, fontSize: 17, padding: '10px 14px', fontWeight: 600, borderColor: immPostcode.length >= 2 && !matchImmZone(immPostcode) ? '#b5471c' : immPostcode.length >= 2 && isImmROR(immPostcode) ? '#b87020' : '#007835', borderWidth: '1.5px'}} value={immPostcode} onChange={e => setImmPostcode(e.target.value.toUpperCase())} maxLength={8} onKeyDown={e => { if (e.key === 'Enter' && immPostcode.length >= 2) doImmCalc(); }} placeholder="e.g. DN40" />
+                  <input style={{...styles.input, width: 180, fontSize: 17, padding: '10px 14px', fontWeight: 600, borderColor: immPostcode.length >= 2 && !matchImmZone(immPostcode) ? '#b5471c' : immPostcode.length >= 2 && isImmROR(immPostcode) ? '#b87020' : '#007835', borderWidth: '1.5px'}} value={immPostcode} onChange={e => setImmPostcode(cleanPostcodeInput(e.target.value))} onKeyDown={e => { if (e.key === 'Enter' && immPostcode.length >= 2) doImmCalc(); }} placeholder="e.g. DN40 or full postcode" />
                   {immPostcode.length >= 2 && isImmROR(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>Rate on Request — contact Immingham</span>)}
                   {immPostcode.length >= 2 && !isImmROR(immPostcode) && !matchImmZone(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>{extractPostcodeArea(immPostcode).invalid ? 'Not a valid postcode' : 'Not found in Immingham zones'}</span>)}
                   {immPostcode.length >= 2 && !isImmROR(immPostcode) && matchImmZone(immPostcode) && (<><span style={{ padding: '7px 14px', borderRadius: 20, background: '#e8f5ec', border: '1px solid #cce8d6', fontSize: 13, color: '#007835', fontWeight: 700 }}>{matchImmZone(immPostcode)}</span>{!isPlausibleDistrict(immPostcode) && <span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', fontSize: 13, color: '#b5471c', fontWeight: 600, marginLeft: 8 }}>District may not exist — double-check</span>}</>)}
