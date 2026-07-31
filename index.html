@@ -1,29 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SPP Transport Rates</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --green:#0f7a3a; --green-deep:#0a5f2d; --brand-green:#007835;
-      --terra:#b5471c; --terra-soft:#d98a63; --rust:#b87020;
-      --ink:#22302a; --muted:#53605a; --line:#dde5e0; --bg:#eef2ef; --card:#fff;
-      --shadow:0 1px 2px rgba(20,40,30,.06),0 1px 1px rgba(20,40,30,.04);
-    }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { margin: 0; padding: 0; background: var(--bg); -webkit-font-smoothing: antialiased; font-family: Figtree, system-ui, Arial, sans-serif; }
-    input:focus { outline: none; border-color: var(--brand-green) !important; }
-  </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPP Transport Rates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Figtree', system-ui, Arial, sans-serif; background: #eef2ef; }
+  input:focus, select:focus { outline: none; }
+  .pc-input::placeholder { font-size: 12.5px; }
+
+  /* ===== quoter-flow step styling ===== */
+  .qstep { margin-bottom: 14px; border: 1px solid #007835; border-radius: 12px; padding: 13px 14px; }
+  .qstep.active { background: #007835; border-radius: 12px; padding: 13px 14px; }
+  .qstep.active .qlab { color: #fff; }
+  .qstep.active .qnote { color: #dcf3e4; }
+  .qstep.active .qhint { color: #dcf3e4; }
+  .qlab { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #53605a; margin-bottom: 9px; }
+  .qpill { border: 1.5px solid #dde5e0; background: #fff; border-radius: 9px; padding: 8px 13px; font-size: 13.5px; font-weight: 500; color: #22302a; cursor: pointer; font-family: inherit; transition: all .12s; display: inline-flex; align-items: center; gap: 5px; }
+  .qpill:hover { border-color: #007835; }
+  .qpill.on { border-color: #007835; background: #f1f9f3; color: #007835; }
+  .qpill .qsub { font-size: 11px; opacity: .6; }
+  .qspill { flex-direction: column; align-items: flex-start; gap: 1px; min-width: 78px; }
+  .qspill .qsub { font-size: 10.5px; color: #53605a; opacity: 1; font-weight: 500; }
+  .qspill.on .qsub { color: #0f7a3a; }
+  .qstep.active .qpill:not(.qspill) { background: transparent; color: #fff; border-color: rgba(255,255,255,.45); }
+  .qstep.active .qpill:not(.qspill):hover { border-color: #fff; }
+  .qstep.active .qpill:not(.qspill) .qsub { opacity: .8; }
+  .qstep.active .qpill:not(.qspill).on { background: #fff; color: #007835; border-color: #fff; font-weight: 700; }
+  .qstep.active .qpill:not(.qspill).on::before { content: '\2713'; font-weight: 800; }
+  .qstep.active .qspill { border-color: transparent; }
+  .qstep.active .qspill.on { border-color: #fff; }
+  .qcalcbtn { border: 1px solid #007835; background: none; color: #007835; border-radius: 8px; padding: 7px 13px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: inherit; transition: all .12s; }
+  .qcalcbtn.on { background: #007835; color: #fff; }
+  .qstep.active .qcalcbtn { border-color: #fff; color: #fff; background: none; }
+  .qstep.active .qcalcbtn.on { background: #fff; color: #007835; border-color: #fff; }
+  .qstep.active .qwtag { color: #dcf3e4; }
+  .qnum { color: #22302a; }
+  .qstep.active .qnum { color: #fff; }
+  .qnote { font-size: 11.5px; color: #b87020; margin-top: 8px; font-style: italic; }
+  .qhint { font-size: 11.5px; color: #53605a; font-style: italic; }
+  .qover { margin-top: 8px; padding: 9px 12px; border-radius: 9px; background: #fff4e8; border: 1.5px solid #d98a63; color: #b5471c; font-size: 12px; font-weight: 600; line-height: 1.45; }
+  .qstep.active .qover { background: #fff; border-color: #fff; }
+  .qadd { transition: all .12s; }
+  .qstep.active .qadd { border-color: #fff !important; color: #fff !important; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
+<div id="root"></div>
+<script type="text/babel">
                         const { useState, useCallback, useMemo, useRef, useEffect } = React;
 
 
@@ -167,8 +197,8 @@ function getFuelSurcharge(haulier) {
 }
 
 const COLLECTION_POINTS = [
-  { id: "immingham", label: "Immingham", haulier: "CDL", color: "#007835" },
-  { id: "orlimex", label: "Orlimex - Immingham", haulier: "CDL", color: "#007835" },
+  { id: "immingham", label: "Immingham Warehouse", haulier: "Immingham / CDL", color: "#007835", merged: true },
+  { id: "orlimex", label: "Orlimex / Immingham Warehouse", haulier: "CDL", color: "#007835" },
   { id: "triesse", label: "Triesse Ltd.", haulier: "Longs of Leeds", color: "#0a5f2d" },
   { id: "latham", label: "James Latham Leeds", haulier: "Longs of Leeds", color: "#0a5f2d" },
   { id: "booker", label: "Booker Timber", haulier: "TWA", color: "#0f7a3a" },
@@ -844,7 +874,9 @@ function getPalletTypeIndex(weight, height) {
     if (weight <= 1200) return 4;
     return 5;
   }
-  // Without height, default conservatively
+  // Without height, default conservatively (shared default used by Longs - unchanged).
+  // Longs' own band weight thresholds are not defined in its rate sheet, and Longs
+  // plywood is invoice-verified at the Full rate, so we do NOT infer Half here.
   if (weight <= 150) return 0;
   if (weight <= 300) return 1;
   if (weight <= 1200) return 4; // Full Pallet
@@ -1110,34 +1142,58 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
     }
     
     // Size index: micro=0, qtr=1, half=2, fl=3, full=4, fp=5
-    let sizeIdx = isOversized ? 4 : typeIdx;
+    // FIX: oversized pallets now use the weight-derived band, not hardcoded Full.
+    // TWA-LOCAL band thresholds (verified vs TWA invoice: 315kg = Half). Kept out of the
+    // shared getPalletTypeIndex so Longs - whose band weights are undefined - is unaffected.
+    const twaBandIndex = (w) => {
+      if (w <= 150) return 0;   // Micro
+      if (w <= 300) return 1;   // Quarter
+      if (w <= 600) return 2;   // Half
+      if (w <= 1200) return 4;  // Full
+      return 5;                 // Full Plus
+    };
+    let sizeIdx = twaBandIndex(weightKg);
     
+    // getRate: rows hold [zone, postcodes, [1-plt bands], [2-plt bands + 4/5/6-plt Full], [3-plt bands]]
+    // The 4/5/6-pallet Full-only rates live appended on the 2-plt sub-array at indices 6,7,8.
     const getRate = (row, pltCount) => {
       if (!row) return null;
+      // Full-only dedicated columns for 4/5/6 pallets (index 6=4plt, 7=5plt, 8=6plt on the 2-plt array)
+      if (pltCount >= 4 && pltCount <= 6) {
+        const fullCol = row[3];
+        const idx = pltCount + 2; // 4->6, 5->7, 6->8
+        return (fullCol && fullCol[idx] != null) ? fullCol[idx] : null;
+      }
       const rateArr = pltCount === 1 ? row[2] : pltCount === 2 ? row[3] : row[4];
       if (!rateArr || rateArr[sizeIdx] === null) return null;
       return rateArr[sizeIdx];
     };
     
     if (!isOversized) {
-      const ndBase = getRate(ndRow, Math.min(qty, 3));
-      const ecoBase = getRate(ecoRow, Math.min(qty, 3));
+      // 7+ pallets: not invoice-verified, direct to TWA rather than guess
+      if (qty > 6) {
+        result.errors.push("7 or more pallets - confirm rate directly with TWA (7-26 pallet card not verified in this tool).");
+        return result;
+      }
+      const ndBase = getRate(ndRow, qty);
+      const ecoBase = getRate(ecoRow, qty);
       
       if (ndBase !== null) {
         let surchargeTotal = 0;
         if (surcharges.includes("am")) surchargeTotal += 7.5;
         if (surcharges.includes("timed")) surchargeTotal += 15;
-        const total = ndBase + surchargeTotal;
-        result.nd = +(total * (1 + FUEL_SURCHARGE)).toFixed(2);
-        result.breakdown.nd = { base: ndBase, surcharges: surchargeTotal, fuel: +(total * FUEL_SURCHARGE).toFixed(2) };
+        // FIX: fuel applies to BASE only, before surcharges
+        const fuel = +(ndBase * FUEL_SURCHARGE).toFixed(2);
+        result.nd = +(ndBase + fuel + surchargeTotal).toFixed(2);
+        result.breakdown.nd = { base: ndBase, surcharges: surchargeTotal, fuel };
       }
       if (ecoBase !== null) {
         let surchargeTotal = 0;
         if (surcharges.includes("am")) surchargeTotal += 7.5;
         if (surcharges.includes("timed")) surchargeTotal += 15;
-        const total = ecoBase + surchargeTotal;
-        result.eco = +(total * (1 + FUEL_SURCHARGE)).toFixed(2);
-        result.breakdown.eco = { base: ecoBase, surcharges: surchargeTotal, fuel: +(total * FUEL_SURCHARGE).toFixed(2) };
+        const fuel = +(ecoBase * FUEL_SURCHARGE).toFixed(2);
+        result.eco = +(ecoBase + fuel + surchargeTotal).toFixed(2);
+        result.breakdown.eco = { base: ecoBase, surcharges: surchargeTotal, fuel };
       }
     } else {
       // Oversized: look up from matrix
@@ -1154,11 +1210,12 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
       
       const calcOS = (base1, label) => {
         if (base1 === null) return null;
-        let base = base1 * osInfo.multiplier * qty;
+        let base = +(base1 * osInfo.multiplier * qty).toFixed(2);
         let surchargeTotal = surcharges.includes("am") ? 7.5 : 0;
         if (surcharges.includes("timed")) surchargeTotal += 15;
-        const total = base + surchargeTotal;
-        return { total: +(total * (1 + FUEL_SURCHARGE)).toFixed(2), base: +base.toFixed(2), surcharges: surchargeTotal, fuel: +(total * FUEL_SURCHARGE).toFixed(2), note: osInfo.label };
+        // FIX: fuel applies to BASE only, before surcharges
+        const fuel = +(base * FUEL_SURCHARGE).toFixed(2);
+        return { total: +(base + fuel + surchargeTotal).toFixed(2), base, surcharges: surchargeTotal, fuel, note: osInfo.label };
       };
       
       const ndCalc = calcOS(ndBase1, 'nd');
@@ -1335,9 +1392,6 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
   if (surcharges.includes("hand") && haulier !== "CDL" && haulier !== "Pallex Essex") {
     result.warnings.push(`Hand offload: Not standard on ${haulier}'s rate sheet. Check with haulier.`);
   }
-  if (surcharges.includes("small")) {
-    result.warnings.push(`Small vehicle: Not on standard rate sheet. Check with ${haulier}.`);
-  }
   
   // Courier viability: if destination is roughly 2hrs drive or less from collection
   // Use zone number as a proxy -- lower zones are local/nearby
@@ -1358,13 +1412,23 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
   }
 
   // Weight warnings per pallet
-  const heaviestPallet = weightKg;
-  if (spaces <= 1 && heaviestPallet > 2000) {
-    result.warnings.push("Pallet weight exceeds 2,000kg. This is above the absolute maximum for a standard pallet. Contact the haulier.");
+  // heaviestPallet is the heaviest SINGLE pallet, not the consignment total.
+  const heaviestPallet = Math.max(weightKg || 0, ...(Array.isArray(allWeights) && allWeights.length ? allWeights.map(w => parseFloat(w) || 0) : [0]));
+  if (heaviestPallet > 2000) {
+    // Engine-level block: every pallet network refuses a single pallet over 2,000kg.
+    // Immingham's own haulage does carry them, but that charge is produced by
+    // calcImmingham and never routes through this function, so it is unaffected.
+    const _wNote = "Over 2,000kg -- " + haulier + " can't carry a single pallet this heavy."
+      + (collectionId === "immingham" ? " The Immingham charge alongside is still valid." : "");
+    result.breakdown.ndNote = _wNote + (result.breakdown.ndNote ? " (" + result.breakdown.ndNote + ")" : "");
+    result.breakdown.ecoNote = _wNote + (result.breakdown.ecoNote ? " (" + result.breakdown.ecoNote + ")" : "");
+    result.nd = null;
+    result.eco = null;
+    result.breakdown.nd = null;
+    result.breakdown.eco = null;
+    result.warnings.push("Pallet weight exceeds 2,000kg. No rate shown -- check the weight is correct before proceeding.");
   } else if (spaces <= 1 && heaviestPallet > 1200) {
     result.warnings.push("Pallet weight exceeds 1,200kg (Full Pallet max for a standard footprint). The haulier may apply additional charges or refuse the consignment.");
-  } else if (spaces >= 2 && heaviestPallet > 2000) {
-    result.warnings.push("Pallet weight exceeds 2,000kg. This is above the typical maximum even for oversized pallets. Contact the haulier.");
   }
 
   // Small vehicle + combined weight warning
@@ -1411,6 +1475,7 @@ const styles = {
   qtyRow: { display: 'flex', alignItems: 'center', gap: 14 },
   qtyBtn: { width: 40, height: 40, borderRadius: 9, border: '1.5px solid #dde5e0', background: '#fff', cursor: 'pointer', fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22302a', boxShadow: '0 1px 2px rgba(20,40,30,.04)' },
   qtyNum: { fontSize: 22, fontWeight: 700, minWidth: 36, textAlign: 'center', color: '#22302a', fontFamily: 'Figtree' },
+  clearBtn: { width: '100%', padding: '15px', borderRadius: 9, border: 'none', background: '#b87020', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 14, transition: 'background 0.15s', letterSpacing: '0.01em', fontFamily: 'Figtree, system-ui, Arial, sans-serif' },
   goBtn: { width: '100%', padding: '15px', borderRadius: 9, border: 'none', background: '#007835', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 14, transition: 'background 0.15s', letterSpacing: '0.01em', fontFamily: 'Figtree' },
   card: (color, borderColor) => ({
     padding: '20px 22px', borderRadius: 14, background: color, border: `1.5px solid ${borderColor}`,
@@ -1480,7 +1545,7 @@ const IMM_RATES = {
   "London": [114.71,163.01,211.31,259.61,289.80,319.99,371.91,412.97,455.23,496.28],
 };
 
-const IMM_FUEL = 0.13;
+const IMM_FUEL = 0.14;
 const IMM_MATERIALS = [
   { id: "birch8x4", label: "Birch 8x4", density: 720, w: 2440, l: 1220 },
   { id: "pine8x4", label: "Pine 8x4", density: 689, w: 2440, l: 1220 },
@@ -1508,6 +1573,7 @@ function calcImmingham(postcode, lines, handball) {
   let totalActualWeight = 0;
   let totalPallets = 0;
   let totalHeightMm = 0;
+  const perPalletHeights = [];
 
   for (const line of lines) {
     if (!line.material || !line.thickness || !line.sheets) continue;
@@ -1515,7 +1581,7 @@ function calcImmingham(postcode, lines, handball) {
     if (!mat) continue;
     totalActualWeight += (line.thickness * mat.w * mat.l * line.sheets * mat.density) / 1000000000;
     totalPallets += (line.pallets || 0);
-    totalHeightMm += (line.sheets * line.thickness);
+    let lineStackMm = (line.sheets * line.thickness);
 
     // Process mixed pallet sub-lines (share the same pallets)
     if (line.mixed && line.subLines) {
@@ -1524,11 +1590,15 @@ function calcImmingham(postcode, lines, handball) {
         const subMat = IMM_MATERIALS.find(m => m.id === sub.material);
         if (!subMat) continue;
         totalActualWeight += (sub.thickness * subMat.w * subMat.l * sub.sheets * subMat.density) / 1000000000;
-        totalHeightMm += (sub.sheets * sub.thickness);
+        lineStackMm += (sub.sheets * sub.thickness);
       }
     }
-    // Add pallet allowance for this line's pallets
-    totalHeightMm += ((line.pallets || 0) * 160);
+    // Per-pallet loaded height: 200mm base + 3mm bottom hardboard + sheets + 3mm top hardboard
+    const palletLoadedHeight = 200 + 3 + lineStackMm + 3;
+    for (let p = 0; p < (line.pallets || 0); p++) perPalletHeights.push(palletLoadedHeight);
+    totalHeightMm += lineStackMm;
+    // Add pallet allowance (base + hardboard) for volumetric calc
+    totalHeightMm += ((line.pallets || 0) * 206);
   }
   totalActualWeight += totalPallets * 20;
   const totalStacks = totalHeightMm > 0 ? Math.ceil(totalHeightMm / 2000) : 0;
@@ -1578,6 +1648,14 @@ function calcImmingham(postcode, lines, handball) {
     result.warnings.push("Recommended: obtain a quote from Immingham. This rate is a best guess and may over-estimate.");
   }
 
+  // Per-pallet height sanity check: 1200mm loaded height is unusually tall
+  result.palletHeightFlags = [];
+  for (let pi = 0; pi < perPalletHeights.length; pi++) {
+    if (perPalletHeights[pi] > 1200) {
+      result.palletHeightFlags.push({ pallet: pi, height: perPalletHeights[pi] });
+    }
+  }
+
   // CDL comparison: 8x4 = 2 pallet spaces, calculate per-pallet then multiply
   // Try exact postcode first, then fallback with district '1' for bare area codes (e.g. 'ML' -> 'ML1')
   let cdlZone = matchCDLZone(postcode);
@@ -1609,6 +1687,42 @@ function calcImmingham(postcode, lines, handball) {
   return result;
 }
 
+
+// ============ MERGED IMMINGHAM + CDL CALCULATION ============
+function calcMerged(postcode, lines, handball, cdlSurcharges) {
+  const result = calcImmingham(postcode, lines, handball);
+  if (result.errors.length > 0) return result;
+
+  let heaviestPalletWeight = 0;
+  const allWeights = [];
+  let totalPallets = 0;
+
+  for (const line of lines) {
+    if (!line.material || !line.thickness || !line.sheets || !line.pallets) continue;
+    const mat = IMM_MATERIALS.find(m => m.id === line.material);
+    if (!mat) continue;
+    let lineWeight = (line.thickness * mat.w * mat.l * line.sheets * mat.density) / 1000000000;
+    if (line.mixed && line.subLines) {
+      for (const sub of line.subLines) {
+        if (!sub.material || !sub.thickness || !sub.sheets) continue;
+        const subMat = IMM_MATERIALS.find(m => m.id === sub.material);
+        if (!subMat) continue;
+        lineWeight += (sub.thickness * subMat.w * subMat.l * sub.sheets * subMat.density) / 1000000000;
+      }
+    }
+    const perPallet = lineWeight / line.pallets;
+    if (perPallet > heaviestPalletWeight) heaviestPalletWeight = perPallet;
+    for (let i = 0; i < line.pallets; i++) allWeights.push(+perPallet.toFixed(1));
+    totalPallets += line.pallets;
+  }
+
+  if (totalPallets > 0) {
+    result.cdl = calculateRate("CDL", postcode, "8x4", totalPallets, +heaviestPalletWeight.toFixed(1), cdlSurcharges || [], null, null, allWeights, "immingham");
+  }
+
+  return result;
+}
+
 // ============ MAIN APP ============
 
 function RateLookupApp() {
@@ -1616,12 +1730,12 @@ function RateLookupApp() {
   const [collection, setCollection] = useState(null);
   const [showCollectionPicker, setShowCollectionPicker] = useState(true);
   const [postcode, setPostcode] = useState('');
-  const [palletSize, setPalletSize] = useState('8x4');
+  const [palletSize, setPalletSize] = useState(null); // no preselect: the size step must be clicked before the next step appears
   const [customW, setCustomW] = useState('');
   const [customL, setCustomL] = useState('');
   const [palletWeights, setPalletWeights] = useState(['']);
   const qty = palletWeights.length;
-  const [selectedSurcharges, setSelectedSurcharges] = useState([]);
+  const [selectedSurcharges, setSelectedSurcharges] = useState(['am']);
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(null);
   const [startTime, setStartTime] = useState(null);
@@ -1637,19 +1751,113 @@ function RateLookupApp() {
   const [weightCalcData, setWeightCalcData] = useState({ core: '', sheets: '', thickness: '' });
   const [showCdlCompare, setShowCdlCompare] = useState(false);
   const [showImmRate, setShowImmRate] = useState(false);
+  const [cdlSurcharges, setCdlSurcharges] = useState(['am']);
+  const toggleCdlSurcharge = (id) => { setCdlSurcharges(prev => { if (prev.includes(id)) return prev.filter(s => s !== id); let next = [...prev, id]; if (id === 'am') next = next.filter(s => s !== 'timed'); if (id === 'timed') next = next.filter(s => s !== 'am'); return next; }); };
+  const isMergedMode = collection === 'immingham';
 
   useEffect(() => { if (collection && postcodeRef.current) postcodeRef.current.focus(); }, [collection]);
   // Clear stale result whenever quote inputs change, so an old rate can't be misread against new inputs
   useEffect(() => { if (result) { setResult(null); setShowCalcs(false); } }, [postcode, palletSize, customW, customL, palletWeights, selectedSurcharges, collection]);
-  useEffect(() => { if (immResult) { setImmResult(null); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); } }, [immPostcode, immLines, immHandball]);
+  useEffect(() => { if (immResult) { setImmResult(null); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); } }, [immPostcode, immLines, immHandball, cdlSurcharges]);
   const haulier = useMemo(() => { const cp = COLLECTION_POINTS.find(c => c.id === collection); return cp ? cp.haulier : null; }, [collection]);
 
   const handleCollectionSelect = (id) => { setCollection(id); setResult(null); setShowCollectionPicker(false); if (!startTime) setStartTime(Date.now()); };
   const toggleSurcharge = (id) => { setSelectedSurcharges(prev => { if (prev.includes(id)) return prev.filter(s => s !== id); let next = [...prev, id]; if (id === 'am') next = next.filter(s => s !== 'timed'); if (id === 'timed') next = next.filter(s => s !== 'am'); return next; }); };
-  const canCalculate = collection && postcode.length >= 2;
+  const doMergedCalc = () => {
+    const parsedLines = immLines.map(l => ({ ...l, thickness: parseFloat(l.thickness) || 0, sheets: parseInt(l.sheets) || 0, pallets: 1, subLines: (l.subLines || []).map(s => ({ ...s, thickness: parseFloat(s.thickness) || 0, sheets: parseInt(s.sheets) || 0 })) }));
+    setImmResult(calcMerged(immPostcode, parsedLines, immHandball, cdlSurcharges));
+    setShowCalcs(false);
+  };
+  const overweightPallet = palletWeights.some(w => parseInt(w) > 2000);
+  const canCalculate = collection && postcode.length >= 2 && !overweightPallet;
   const doCalculate = () => { if (!canCalculate) return; const allWeights = palletWeights.map(w => w ? parseInt(w) : 500); const maxWeight = Math.max(...allWeights); const r = calculateRate(haulier, postcode, palletSize, qty, maxWeight, selectedSurcharges, customW ? parseInt(customW) : null, customL ? parseInt(customL) : null, allWeights, collection); setResult(r); if (startTime) setElapsed(((Date.now() - startTime) / 1000).toFixed(1)); };
   const handleCopy = async (val, which) => { try { await navigator.clipboard.writeText(val.toFixed(2)); setCopied(which); setTimeout(() => setCopied(null), 1200); } catch {} };
-  const reset = () => { setCollection(null); setShowCollectionPicker(true); setPostcode(''); setPalletSize('8x4'); setPalletWeights(['']); setSelectedSurcharges([]); setResult(null); setStartTime(null); setElapsed(null); setCustomW(''); setCustomL(''); setShowCalcs(false); setWeightCalcOpen(null); setWeightCalcData({ core: '', sheets: '', thickness: '' }); };
+  const reset = () => { setCollection(null); setShowCollectionPicker(true); setPostcode(''); setPalletSize(null); setPalletWeights(['']); setSelectedSurcharges(['am']); setResult(null); setStartTime(null); setElapsed(null); setCustomW(''); setCustomL(''); setShowCalcs(false); setWeightCalcOpen(null); setWeightCalcData({ core: '', sheets: '', thickness: '' }); };
+  // Clears the quote fields only. The selected collection point (and therefore the
+  // haulier) is deliberately kept -- use "New quote" to change collection point.
+  const clearQuote = () => { setPostcode(''); setPalletSize(null); setPalletWeights(['']); setSelectedSurcharges(['am']); setResult(null); setCustomW(''); setCustomL(''); setShowCalcs(false); setWeightCalcOpen(null); setWeightCalcData({ core: '', sheets: '', thickness: '' }); if (postcodeRef.current) postcodeRef.current.focus(); };
+  // Clears the Immingham quote fields. Collection point is deliberately kept.
+  const clearImmQuote = () => { setImmPostcode(''); setImmLines([{material:'',thickness:'',pallets:'',sheets:'',mixed:false,subLines:[]}]); setImmHandball(false); setCdlSurcharges(['am']); setImmResult(null); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); if (postcodeRef.current) postcodeRef.current.focus(); };
+  // ===== Email-ready job summary, for when the app can't return a rate =====
+  const NUM_WORDS = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+  const palletWord = n => (NUM_WORDS[n] || n) + ' pallet' + (n === 1 ? '' : 's');
+  const mNum = mm => Math.round((mm / 1000) * 100) / 100;
+  // Derived weights are rounded DOWN to the nearest 50kg and marked with ~ , because they
+  // are the app's own estimate from sheets x thickness, not a figure anyone measured.
+  const kgDown50 = kg => Math.floor(kg / 50) * 50;
+  // Collapses identical pallets into one line: "3 @ ..." instead of the same line three times.
+  const groupRows = rows => {
+    const out = [];
+    rows.forEach(r => {
+      const hit = out.find(o => o.key === r.key);
+      if (hit) hit.n += 1; else out.push({ ...r, n: 1 });
+    });
+    return out;
+  };
+  const copyText = async (text, key) => { try { await navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(null), 1600); } catch {} };
+
+  // Pallet Network form. Height is not collected on this form, so weight only.
+  const buildNetworkJobText = () => {
+    const ps = PALLET_SIZES.find(p => p.id === palletSize);
+    const w = palletSize === 'custom' ? (parseInt(customW) || 0) : (ps ? ps.w : 0);
+    const l = palletSize === 'custom' ? (parseInt(customL) || 0) : (ps ? ps.l : 0);
+    const out = ['We have a job for the below:', '', palletWord(palletWeights.length)];
+    if (w && l) out.push(mNum(w) + ' x ' + mNum(l) + 'm');
+    out.push('');
+    // Weights here are typed in by the user, so they are reproduced exactly: no rounding,
+    // no ~ . Identical pallets are still grouped onto one line.
+    groupRows(palletWeights.map(kg => { const v = parseInt(kg) || 0; return { kg: v, key: String(v) }; }))
+      .forEach(r => out.push(r.n + ' @ ' + r.kg.toLocaleString() + 'kg'));
+    out.push('');
+    out.push('Delivering to ' + postcode.toUpperCase().trim());
+    const sur = SURCHARGES.filter(s => selectedSurcharges.includes(s.id)).map(s => s.label);
+    if (sur.length) out.push('Service required: ' + sur.join(', '));
+    out.push('', 'Could you advise the rate please?');
+    return out.join('\n');
+  };
+
+  // Immingham form. Height and weight are both derived from sheets x thickness.
+  const buildImmJobText = () => {
+    const rows = [];
+    immLines.forEach(ln => {
+      const mat = IMM_MATERIALS.find(m => m.id === ln.material);
+      if (!mat || !ln.sheets || !ln.thickness) return;
+      let kg = (parseFloat(ln.thickness) * mat.w * mat.l * parseInt(ln.sheets) * mat.density) / 1000000000;
+      let stack = parseInt(ln.sheets) * parseFloat(ln.thickness);
+      (ln.subLines || []).forEach(sb => {
+        const sm = IMM_MATERIALS.find(m => m.id === sb.material);
+        if (!sm || !sb.sheets || !sb.thickness) return;
+        kg += (parseFloat(sb.thickness) * sm.w * sm.l * parseInt(sb.sheets) * sm.density) / 1000000000;
+        stack += parseInt(sb.sheets) * parseFloat(sb.thickness);
+      });
+      const h = mNum(200 + 3 + stack + 3);
+      const kgR = kgDown50(kg);
+      rows.push({ h: h, kg: kgR, key: h + '|' + kgR });
+    });
+    const out = ['We have a job for the below:', '', palletWord(rows.length), '2.44 x 1.22m', ''];
+    groupRows(rows).forEach(r => out.push(r.n + ' @ ~' + r.h + 'm height – ~' + r.kg.toLocaleString() + 'kg'));
+    out.push('');
+    out.push('Delivering to ' + immPostcode.toUpperCase().trim());
+    if (immHandball) out.push('Service required: Hand offload');
+    out.push('', 'Could you advise the rate please?');
+    return out.join('\n');
+  };
+
+  const jobCopyBlock = (text, key) => (
+    <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #dde5e0' }}>
+      <div style={{ fontSize: 12.5, color: '#53605a', marginBottom: 8, lineHeight: 1.45 }}>No rate available for this job. Copy the details to email the haulier.</div>
+      <button onClick={() => copyText(text, key)} style={{ background: '#007835', border: 'none', borderRadius: 9, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, color: '#fff', cursor: 'pointer', fontFamily: 'Figtree' }}>{copied === key ? '✓ Copied' : 'Copy job details'}</button>
+      <pre style={{ marginTop: 10, marginBottom: 0, padding: '10px 12px', background: '#f7faf8', border: '1px solid #dde5e0', borderRadius: 9, fontSize: 12, lineHeight: 1.5, color: '#22302a', fontFamily: 'Figtree', whiteSpace: 'pre-wrap' }}>{text}</pre>
+    </div>
+  );
+
+  // Copies the last pallet, including any mixed-pallet sub-lines. Deep-copies subLines
+  // so the new card doesn't share the same array reference as the one it came from.
+  const duplicateLastPallet = () => setImmLines(prev => {
+    const last = prev[prev.length - 1];
+    if (!last) return prev;
+    return [...prev, { ...last, subLines: (last.subLines || []).map(sb => ({ ...sb })) }];
+  });
   const handleKeyDown = (e) => { if (e.key === 'Enter' && canCalculate) doCalculate(); };
   const cpColor = COLLECTION_POINTS.find(c => c.id === collection)?.color || '#007835';
 
@@ -1674,7 +1882,7 @@ function RateLookupApp() {
     }));
     setImmResult(calcImmingham(immPostcode, lines, immHandball));
   };
-  const resetImm = () => { setImmPostcode(''); setImmHandball(false); setImmResult(null); setImmLines([{material:'',thickness:'',pallets:'',sheets:'',mixed:false,subLines:[]}]); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); };
+  const resetImm = () => { setImmPostcode(''); setImmHandball(false); setImmResult(null); setImmLines([{material:'',thickness:'',pallets:'',sheets:'',mixed:false,subLines:[]}]); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); setCdlSurcharges(['am']); };
   const handleImmCopy = async (val) => { try { await navigator.clipboard.writeText(val.toFixed(2)); setImmCopied(true); setTimeout(() => setImmCopied(false), 1200); } catch {} };
 
   const tabStyle = (active) => ({ flex: 1, padding: '10px 0', textAlign: 'center', fontSize: 17, fontWeight: 600, color: active ? '#007835' : 'var(--text-tertiary, #94a3b8)', cursor: 'pointer', background: 'none', border: 'none', borderBottom: active ? '3px solid #007835' : '3px solid transparent', transition: 'all 0.15s' });
@@ -1683,16 +1891,14 @@ function RateLookupApp() {
 
   return (
     <div style={styles.app}>
+      <style>{`.pc-input::placeholder { font-size: 12.5px; }`}</style>
       <div style={styles.header}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
             <div style={styles.logo}>SPP</div>
             <div style={styles.title}>Transport Rates</div>
             <div style={{ height: 3, width: 64, background: '#007835', borderRadius: 2, marginTop: 12, marginBottom: 14 }}></div>
-            <div style={{ display: 'inline-flex', border: '1px solid #007835', borderRadius: 9, overflow: 'hidden', background: '#fff' }}>
-              <button style={{ background: tab === 'haulier' ? '#007835' : 'transparent', color: tab === 'haulier' ? '#fff' : '#007835', border: 0, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => setTab('haulier')}>Pallet Network</button>
-              <button style={{ background: tab === 'immingham' ? '#007835' : 'transparent', color: tab === 'immingham' ? '#fff' : '#007835', border: 0, borderLeft: '1px solid rgba(0,120,53,.35)', padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => setTab('immingham')}>Immingham</button>
-            </div>
+
           </div>
           <div style={{ ...styles.subtitle, textAlign: 'right', marginTop: 8, flexShrink: 0 }}>
             <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: '#53605a', marginBottom: 4 }}>Fuel surcharges</div>
@@ -1703,26 +1909,140 @@ function RateLookupApp() {
 
       <div style={styles.workspace}>
 
-      {tab === 'haulier' ? (
+      {(() => (
         <div style={{ flex: 1, display: 'flex', gap: 12, padding: '12px 14px', overflow: 'hidden', minHeight: 0 }}>
           {/* PANE 1 */}
-          <div style={{ flex: '0 0 480px', display: 'flex', minWidth: 0 }}>
+          <div style={{ flex: '0 0 400px', display: 'flex', minWidth: 0 }}>
             <div style={{ background: '#fff', border: '1px solid #dde5e0', borderRadius: 14, padding: '18px', boxShadow: '0 1px 2px rgba(20,40,30,.06)', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: '#007835', marginBottom: 14 }}>Collection point</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignContent: 'start', flex: 1 }}>{COLLECTION_POINTS.map(cp => (<div key={cp.id} style={{ padding: '12px 14px', borderRadius: 12, border: collection === cp.id ? '1.5px solid #007835' : '1.5px solid #dde5e0', background: collection === cp.id ? '#f1f9f3' : '#fff', cursor: 'pointer', transition: 'all 0.12s', gridColumn: cp.id === 'tilbury' ? '1 / -1' : undefined }} onClick={() => handleCollectionSelect(cp.id)}><div style={{ fontSize: 14, fontWeight: 700, color: collection === cp.id ? '#007835' : '#22302a', fontFamily: 'Figtree' }}>{cp.label}</div><div style={{ fontSize: 12, color: '#53605a', marginTop: 1, fontWeight: 500 }}>{cp.haulier}</div>{cp.id === 'tilbury' && <div style={{ fontSize: 11.5, color: '#53605a', marginTop: 6, lineHeight: 1.5 }}><span style={{ fontWeight: 700, color: '#007835' }}>Collection from:</span> CM0–6, CM8–15, CM99, RM13, RM16–20, SS12–14</div>}</div>))}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', background: '#007835', padding: '10px 14px', borderRadius: '12px 12px 0 0', margin: '-18px -18px 14px' }}>Collection point</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignContent: 'start', flex: 1 }}>
+                {/* Immingham Warehouse - full width, prominent */}
+                <div style={{ padding: '12px 14px', borderRadius: 12, border: collection === 'immingham' ? '1.5px solid #007835' : '1.5px solid #dde5e0', background: collection === 'immingham' ? '#f1f9f3' : '#fff', cursor: 'pointer', transition: 'all 0.12s' }} onClick={() => handleCollectionSelect('immingham')}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: collection === 'immingham' ? '#007835' : '#22302a', fontFamily: 'Figtree' }}>Immingham Warehouse — 8x4s only</div>
+                  <div style={{ fontSize: 12, color: '#53605a', marginTop: 1, fontWeight: 500 }}>Immingham haulage + CDL comparison</div>
+                </div>
+
+                {/* Pallet Network section */}
+                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: '#007835', marginTop: 14, marginBottom: 8 }}>Pallet Network</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {COLLECTION_POINTS.filter(cp => cp.id !== 'immingham').map(cp => (
+                    <div key={cp.id} style={{ padding: '12px 14px', borderRadius: 12, border: collection === cp.id ? '1.5px solid #007835' : '1.5px solid #dde5e0', background: collection === cp.id ? '#f1f9f3' : '#fff', cursor: 'pointer', transition: 'all 0.12s' }} onClick={() => handleCollectionSelect(cp.id)}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: collection === cp.id ? '#007835' : '#22302a', fontFamily: 'Figtree' }}>{cp.label}</div>
+                      <div style={{ fontSize: 12, color: '#53605a', marginTop: 1, fontWeight: 500 }}>{cp.haulier}</div>
+                      {cp.id === 'tilbury' && <div style={{ fontSize: 11.5, color: '#53605a', marginTop: 6, lineHeight: 1.5 }}><span style={{ fontWeight: 700, color: '#007835' }}>Collection from:</span> CM0–6, CM8–15, CM99, RM13, RM16–20, SS12–14</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div style={{ borderTop: '1px solid #dde5e0', marginTop: 12, paddingTop: 10 }}><button onClick={() => { reset(); resetImm(); }} style={{ background: '#fff', border: '1.5px solid #007835', borderRadius: 9, padding: '8px 18px', fontSize: 13, fontWeight: 700, color: '#007835', cursor: 'pointer', fontFamily: 'Figtree' }}>New quote</button></div>
             </div>
           </div>
           {/* PANE 2 */}
-          <div style={{ flex: '1.1 1 0', display: 'flex', minWidth: 0 }}>
+          <div style={{ flex: '1.35 1 0', display: 'flex', minWidth: 0 }}>
             <div style={{ background: '#fff', border: '1px solid #dde5e0', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 2px rgba(20,40,30,.06)', flex: 1, overflowY: 'auto' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: '#007835', marginBottom: 14 }}>Quote details</div>
-              {!collection ? (<div style={{ color: '#53605a', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>Select a collection point to begin</div>) : (<div>
-              {/* Postcode row: input + zone badge inline */}
-              <div style={{ marginBottom: 18 }}>
-                <div style={styles.stepLabel}>Delivery postcode</div>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', background: '#007835', padding: '10px 14px', borderRadius: '12px 12px 0 0', margin: '-18px -20px 14px' }}>Quote details</div>
+              {!collection ? (<div style={{ color: '#53605a', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>Select a collection point to begin</div>) : isMergedMode ? (<div>
+              {/* MERGED MODE: Immingham Warehouse product-line form */}
+              <div style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 20, background: '#fdf3e7', border: '1px solid #eedbbd', color: '#b87020', fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Jobs that aren't 8x4: quote directly from Immingham</div>
+              <div className="qstep">
+                <span className="qlab">Delivery postcode</span>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <input ref={postcodeRef} style={{...styles.input, width: 180, fontSize: 17, padding: '10px 14px', fontWeight: 600, borderColor: postcode.length >= 2 && !(() => { if (haulier === 'CDL') return matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO); if (haulier && haulier.startsWith('Horizon')) return matchHorizonZone(postcode); if (haulier === 'Pallex Essex') return matchPallexZone(postcode); return true; })() ? '#b5471c' : '#007835', borderWidth: '1.5px'}} value={postcode} onChange={e => setPostcode(cleanPostcodeInput(e.target.value))} onKeyDown={handleKeyDown} placeholder="" />
+                  <input ref={postcodeRef} style={{...styles.input, width: 180, fontSize: 17, padding: '10px 14px', fontWeight: 600, borderColor: immPostcode.length >= 2 && !matchImmZone(immPostcode) ? '#b5471c' : immPostcode.length >= 2 && isImmROR(immPostcode) ? '#b87020' : '#007835', borderWidth: '1.5px'}} className="pc-input" value={immPostcode} onChange={e => setImmPostcode(cleanPostcodeInput(e.target.value))} onKeyDown={e => { if (e.key === 'Enter') doMergedCalc(); }} placeholder="" />
+                  {immPostcode.length >= 2 && isImmROR(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>Rate on Request</span>)}
+                  {immPostcode.length >= 2 && !isImmROR(immPostcode) && !matchImmZone(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>{extractPostcodeArea(immPostcode).invalid ? 'Not a valid postcode' : 'Not found'}</span>)}
+                  {immPostcode.length >= 2 && !isImmROR(immPostcode) && matchImmZone(immPostcode) && !isPlausibleDistrict(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', fontSize: 13, color: '#b5471c', fontWeight: 600 }}>District may not exist</span>)}
+                </div>
+              </div>
+              {/* Progressive disclosure, same pattern as the Pallet Network form and the Quoter.
+                 Nothing below the postcode appears until a postcode is entered. */}
+              {immPostcode.length >= 2 && (() => {
+                const palletsReady = immLines.length > 0 && immLines.every(l => l.material && l.sheets && l.thickness);
+                const _isteps = ['pallets', 'options'];
+                const _icomp = s => s === 'pallets' ? palletsReady : false;
+                const _ifirstInc = _isteps.findIndex(s => !_icomp(s));
+                const _iupTo = _ifirstInc < 0 ? _isteps.length - 1 : _ifirstInc;
+                const ishown = s => _isteps.indexOf(s) <= _iupTo;
+                const istepCls = s => "qstep" + (_isteps.indexOf(s) === _ifirstInc ? " active" : "");
+                return (<>
+                {/* STEP: pallets and materials */}
+                <div className={istepCls('pallets')}>
+                  <span className="qlab">Pallets &amp; materials</span>
+              {immLines.map((line, idx) => {
+                // Live per-pallet height + weight, computed from current inputs (before Calculate)
+                let liveStackMm = (parseInt(line.sheets) || 0) * (parseFloat(line.thickness) || 0);
+                let liveWeightKg = 0;
+                const _lineMat = IMM_MATERIALS.find(m => m.id === line.material);
+                if (_lineMat && line.sheets && line.thickness) liveWeightKg += (parseFloat(line.thickness) * _lineMat.w * _lineMat.l * parseInt(line.sheets) * _lineMat.density) / 1000000000;
+                if (line.mixed && line.subLines) {
+                  for (const sub of line.subLines) {
+                    const _subMat = IMM_MATERIALS.find(m => m.id === sub.material);
+                    if (_subMat && sub.sheets && sub.thickness) {
+                      liveStackMm += (parseInt(sub.sheets) || 0) * (parseFloat(sub.thickness) || 0);
+                      liveWeightKg += (parseFloat(sub.thickness) * _subMat.w * _subMat.l * parseInt(sub.sheets) * _subMat.density) / 1000000000;
+                    }
+                  }
+                }
+                const liveHeight = liveStackMm > 0 ? 200 + 3 + liveStackMm + 3 : 0;
+                const heightFlag = liveHeight > 1200 ? { height: liveHeight } : null;
+                const weightFlag = liveWeightKg > 2000;
+                const cardFlagged = heightFlag || weightFlag;
+                return (
+                <div key={idx} style={{ marginBottom: 10, padding: '12px 14px', borderRadius: 10, border: cardFlagged ? '1.5px solid #d98a63' : '1px solid #dde5e0', background: cardFlagged ? '#fff8f1' : '#fff' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>Pallet {idx + 1}</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <div onClick={() => toggleMixed(idx)} style={styles.pill(immLines[idx].mixed)}>{immLines[idx].mixed ? '✓ ' : ''}Mixed pallet</div>
+                      {immLines.length > 1 && <span onClick={() => setImmLines(prev => prev.filter((_, i) => i !== idx))} style={{ cursor: 'pointer', color: '#94a3b8', fontSize: 15 }}>✕</span>}
+                    </div>
+                  </div>
+                  {heightFlag && <div style={{ padding: '8px 12px', borderRadius: 8, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 12.5, fontWeight: 600, marginBottom: 10 }}>Loaded height: {heightFlag.height}mm — check the sheet quantity</div>}
+                  {weightFlag && <div style={{ padding: '8px 12px', borderRadius: 8, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 12.5, fontWeight: 600, marginBottom: 10 }}>Pallet weight ~{Math.round(liveWeightKg).toLocaleString()}kg (exceeds 2,000kg). CDL may not accept it; Immingham's own haulage can. Check before proceeding.</div>}
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div><div style={{ fontSize: 12.5, color: '#53605a', marginBottom: 3 }}>Material</div><select style={{...selectStyle, width: 200}} value={line.material} onChange={e => updateImmLine(idx, 'material', e.target.value)}><option value="">Select material</option>{IMM_MATERIALS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}</select></div>
+                    {line.material && (<><div><div style={{ fontSize: 12.5, color: '#53605a', marginBottom: 3 }}>Total sheets</div><input style={{...smallInput, width: 96}} value={line.sheets} onChange={e => updateImmLine(idx, 'sheets', e.target.value.replace(/\D/g, ''))} /></div><div><div style={{ fontSize: 12.5, color: '#53605a', marginBottom: 3 }}>Thickness (mm)</div><input style={{...smallInput, width: 106}} value={line.thickness} onChange={e => updateImmLine(idx, 'thickness', e.target.value.replace(/[^\d.]/g, ''))} /></div></>)}
+                  </div>
+                  {line.mixed && line.subLines && line.subLines.map((sub, subIdx) => (
+                    <div key={subIdx} style={{ borderTop: '1px dashed #dde5e0', paddingTop: 8, marginTop: 10 }}>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <select style={{...selectStyle, width: 200}} value={sub.material} onChange={e => updateSubLine(idx, subIdx, 'material', e.target.value)}><option value="">Select material</option>{IMM_MATERIALS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}</select>
+                        {sub.material && (<><div><div style={{ fontSize: 12.5, color: '#53605a', marginBottom: 3 }}>Total sheets</div><input style={{...smallInput, width: 96}} value={sub.sheets} onChange={e => updateSubLine(idx, subIdx, 'sheets', e.target.value.replace(/\D/g, ''))} /></div><div><div style={{ fontSize: 12.5, color: '#53605a', marginBottom: 3 }}>Thickness (mm)</div><input style={{...smallInput, width: 106}} value={sub.thickness} onChange={e => updateSubLine(idx, subIdx, 'thickness', e.target.value.replace(/[^\d.]/g, ''))} /></div></>)}
+                        <span onClick={() => { const next = [...immLines]; next[idx] = {...next[idx], subLines: next[idx].subLines.filter((_, si) => si !== subIdx)}; setImmLines(next); }} style={{ cursor: 'pointer', color: '#94a3b8', fontSize: 14, paddingBottom: 10 }}>✕</span>
+                      </div>
+                    </div>
+                  ))}
+                  {line.mixed && (<div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #eef2ef' }}><button onClick={() => addSubLine(idx)} style={{ background: 'none', border: '1px dashed #007835', borderRadius: 9, padding: '6px 12px', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: '#007835', fontFamily: 'inherit' }}>+ Add material to this pallet</button></div>)}
+                </div>
+              );})}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button className="qadd" onClick={() => setImmLines(prev => [...prev, {material:'',thickness:'',sheets:'',mixed:false,subLines:[]}])} style={{ background: 'none', border: '1px dashed #007835', borderRadius: 9, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#007835', fontFamily: 'inherit' }}>+ Add another pallet</button>
+                    {(() => { const lastLn = immLines[immLines.length - 1]; const canDup = lastLn && lastLn.material && lastLn.sheets && lastLn.thickness; return canDup ? (<button className="qadd" onClick={duplicateLastPallet} style={{ background: 'none', border: '1px dashed #007835', borderRadius: 9, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#007835', fontFamily: 'inherit' }}>&#10697; Copy pallet {immLines.length}</button>) : null; })()}
+                  </div>
+                </div>
+
+                {/* STEP: delivery options (Immingham surcharge + CDL comparison options) */}
+                {ishown('options') && (<div className={istepCls('options')}>
+                  <span className="qlab">Immingham surcharge</span>
+                  <div className={"qpill" + (immHandball ? " on" : "")} onClick={() => setImmHandball(!immHandball)}>Handball<span className="qsub">£20 per consignment</span></div>
+                  <span className="qlab" style={{ marginTop: 14 }}>CDL delivery options</span>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div className={"qpill" + (cdlSurcharges.includes('am') ? " on" : "")} onClick={() => toggleCdlSurcharge('am')}>AM Delivery<span className="qsub">£12</span></div>
+                    <div className={"qpill" + (cdlSurcharges.includes('timed') ? " on" : "")} onClick={() => toggleCdlSurcharge('timed')}>Timed Delivery<span className="qsub">£15</span></div>
+                  </div>
+                  <div className="qnote">AM delivery is included by default — deselect if not required.</div>
+                </div>)}
+
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {ishown('options') && <button style={{...styles.goBtn, width: 'auto', padding: '13px 48px', opacity: palletsReady ? 1 : .4}} onClick={doMergedCalc} disabled={!palletsReady}>Calculate</button>}
+                  <button style={{...styles.clearBtn, width: 'auto', padding: '13px 32px'}} onClick={clearImmQuote}>Clear</button>
+                </div>
+                </>);
+              })()}
+              </div>) : (<div>
+              {/* Postcode row: input + zone badge inline */}
+              <div className="qstep">
+                <span className="qlab">Delivery postcode</span>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <input ref={postcodeRef} style={{...styles.input, width: 180, fontSize: 17, padding: '10px 14px', fontWeight: 600, borderColor: postcode.length >= 2 && !(() => { if (haulier === 'CDL') return matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO); if (haulier && haulier.startsWith('Horizon')) return matchHorizonZone(postcode); if (haulier === 'Pallex Essex') return matchPallexZone(postcode); return true; })() ? '#b5471c' : '#007835', borderWidth: '1.5px'}} className="pc-input" value={postcode} onChange={e => setPostcode(cleanPostcodeInput(e.target.value))} onKeyDown={handleKeyDown} placeholder="" />
                   {postcode.length >= 2 && (() => {
                     let zone = null;
                     let estimated = false;
@@ -1740,112 +2060,180 @@ function RateLookupApp() {
                   })()}
                 </div>
               </div>
-
-              {/* Rest of form - only shows after valid postcode entered */}
-              {postcode.length >= 2 && (() => { if (haulier === 'CDL') return !!matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return !!(matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO)); if (haulier && haulier.startsWith('Horizon')) return !!matchHorizonZone(postcode); if (haulier === 'Pallex Essex') return !!matchPallexZone(postcode); return false; })() && (<>
-                <div style={{ marginBottom: 18 }}><div style={styles.stepLabel}>Pallet size</div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <div style={{ padding: '8px 13px', borderRadius: 9, border: palletSize === '8x4' ? '1.5px solid #007835' : '1.5px solid #dde5e0', background: palletSize === '8x4' ? '#f1f9f3' : '#fff', cursor: 'pointer', fontSize: 13.5, fontWeight: palletSize === '8x4' ? 700 : 500, color: palletSize === '8x4' ? '#007835' : '#22302a' }} onClick={() => setPalletSize('8x4')}>8x4 <span style={{ fontWeight: 500, color: palletSize === '8x4' ? '#007835' : '#53605a', fontSize: 12 }}>2440x1220</span></div>
-                    {PALLET_SIZES.filter(ps => ps.id !== '8x4' && ps.id !== 'custom').map(ps => (<div key={ps.id} style={{ padding: '8px 13px', borderRadius: 9, border: palletSize === ps.id ? '1.5px solid #007835' : '1.5px solid #dde5e0', background: palletSize === ps.id ? '#f1f9f3' : '#fff', cursor: 'pointer', fontSize: 13.5, fontWeight: palletSize === ps.id ? 700 : 500, color: palletSize === ps.id ? '#007835' : '#22302a' }} onClick={() => setPalletSize(ps.id)}>{ps.label}</div>))}
-                    <div style={{ padding: '8px 13px', borderRadius: 9, border: palletSize === 'custom' ? '1.5px solid #007835' : '1.5px solid #dde5e0', background: palletSize === 'custom' ? '#f1f9f3' : '#fff', cursor: 'pointer', fontSize: 13.5, fontWeight: palletSize === 'custom' ? 700 : 500, color: palletSize === 'custom' ? '#007835' : '#22302a' }} onClick={() => setPalletSize('custom')}>Custom</div>
+              {/* Rest of form - quoter-flow steps, only after valid postcode */}
+              {postcode.length >= 2 && (() => { if (haulier === 'CDL') return !!matchCDLZone(postcode); if (haulier === 'Longs of Leeds') return matchLongsZone(postcode) !== null; if (haulier === 'TWA') return !!(matchTWAZone(postcode, TWA_ND) || matchTWAZone(postcode, TWA_ECO)); if (haulier && haulier.startsWith('Horizon')) return !!matchHorizonZone(postcode); if (haulier === 'Pallex Essex') return !!matchPallexZone(postcode); return false; })() && (() => {
+                const sizeReady = !!palletSize && (palletSize !== 'custom' || (customW && customL));
+                const weightsReady = palletWeights.length > 0 && palletWeights.every(w => w !== '');
+                // Progressive disclosure, same pattern as the Quoter app: build an ordered
+                // step list, find the first incomplete step, and render only up to and
+                // including it. Completed steps stay visible and editable. Surcharges is
+                // terminal (never "complete") so it keeps the green highlight at the end.
+                const _steps = ['size', 'weight', 'surch'];
+                const _comp = s => s === 'size' ? sizeReady : s === 'weight' ? weightsReady : false;
+                const _firstInc = _steps.findIndex(s => !_comp(s));
+                const _upTo = _firstInc < 0 ? _steps.length - 1 : _firstInc;
+                const shown = s => _steps.indexOf(s) <= _upTo;
+                const stepCls = s => "qstep" + (_steps.indexOf(s) === _firstInc ? " active" : "");
+                return (<>
+                {/* STEP: pallet size */}
+                <div className={stepCls('size')}>
+                  <span className="qlab">Pallet size</span>
+                  <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                    <div className={"qpill qspill" + (palletSize === '8x4' ? " on" : "")} onClick={() => setPalletSize('8x4')}>8x4<span className="qsub">2440 x 1220</span></div>
+                    {PALLET_SIZES.filter(ps => ps.id !== '8x4' && ps.id !== 'custom').map(ps => (<div key={ps.id} className={"qpill qspill" + (palletSize === ps.id ? " on" : "")} onClick={() => setPalletSize(ps.id)}>{ps.label}<span className="qsub">{ps.w && ps.l ? ps.w + ' x ' + ps.l : ''}</span></div>))}
+                    <div className={"qpill qspill" + (palletSize === 'custom' ? " on" : "")} onClick={() => setPalletSize('custom')}>Custom<span className="qsub">enter mm</span></div>
                   </div>
                   {palletSize === 'custom' && (
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 12.5, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Width (mm)</div>
-                        <input style={{...styles.input, width: 110, fontSize: 14, padding: '8px 10px', textAlign: 'center'}} value={customW} onChange={e => setCustomW(e.target.value.replace(/\D/g, ''))} />
-                      </div>
-                      <div style={{ color: '#94a3b8', fontSize: 14, paddingTop: 16 }}>x</div>
-                      <div>
-                        <div style={{ fontSize: 12.5, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Length (mm)</div>
-                        <input style={{...styles.input, width: 110, fontSize: 14, padding: '8px 10px', textAlign: 'center'}} value={customL} onChange={e => setCustomL(e.target.value.replace(/\D/g, ''))} />
-                      </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="qwtag" style={{ fontSize: 11.5, fontWeight: 700, color: '#53605a' }}>W</span><input style={{...styles.input, width: 100, fontSize: 14, padding: '8px 10px', textAlign: 'center'}} value={customW} onChange={e => setCustomW(e.target.value.replace(/\D/g, ''))} placeholder="mm" /></div>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: palletSize === 'custom' && !sizeReady ? '#fff' : '#94a3b8' }}>x</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="qwtag" style={{ fontSize: 11.5, fontWeight: 700, color: '#53605a' }}>L</span><input style={{...styles.input, width: 100, fontSize: 14, padding: '8px 10px', textAlign: 'center'}} value={customL} onChange={e => setCustomL(e.target.value.replace(/\D/g, ''))} placeholder="mm" /></div>
+                      <span className="qhint">width x length in mm</span>
                     </div>
                   )}
                 </div>
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-                    <div style={{...styles.stepLabel, marginBottom: 0}}>Pallets</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <button style={{...styles.qtyBtn, width: 32, height: 32, fontSize: 16}} onClick={() => { if (palletWeights.length > 1) { setPalletWeights(prev => prev.slice(0, -1)); if (weightCalcOpen >= palletWeights.length - 1) setWeightCalcOpen(null); } }}>−</button>
-                      <span style={{...styles.qtyNum, fontSize: 18, minWidth: 24}}>{qty}</span>
+
+                {/* STEP: quantity + weights */}
+                {shown('weight') && (<div className={stepCls('weight')}>
+                  <span className="qlab">Pallets &amp; weight</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button style={{...styles.qtyBtn, width: 32, height: 32, fontSize: 16}} onClick={() => { if (palletWeights.length > 1) { setPalletWeights(prev => prev.slice(0, -1)); if (weightCalcOpen >= palletWeights.length - 1) setWeightCalcOpen(null); } }}>-</button>
+                      <span className="qnum" style={{ fontSize: 18, fontWeight: 700, minWidth: 24, textAlign: 'center', fontFamily: 'Figtree' }}>{qty}</span>
                       <button style={{...styles.qtyBtn, width: 32, height: 32, fontSize: 16}} onClick={() => { if (palletWeights.length < 6) setPalletWeights(prev => [...prev, '']); }}>+</button>
                     </div>
-                    <span style={{ fontSize: 12.5, color: '#94a3b8' }}>More accurate weight = more accurate quote</span>
+                    <span className="qhint">More accurate weight = more accurate quote</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {palletWeights.map((w, i) => (
-                        <div key={i}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 74 }}>
-                              <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#007835', flexShrink: 0 }}></div>
-                              <span style={{ fontSize: 14, fontWeight: 500, color: '#22302a' }}>Pallet {i + 1}</span>
-                            </div>
-                            <div style={{ position: 'relative', width: 110 }}>
-                              <input style={{...styles.input, width: '100%', fontSize: 15, padding: '8px 30px 8px 10px', textAlign: 'center'}} value={w} onChange={e => { const next = [...palletWeights]; next[i] = e.target.value.replace(/\D/g, ''); setPalletWeights(next); }} onKeyDown={handleKeyDown} />
-                              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#94a3b8', pointerEvents: 'none' }}>kg</span>
-                            </div>
-                            <button onClick={() => { if (weightCalcOpen === i) { setWeightCalcOpen(null); } else { setWeightCalcOpen(i); setWeightCalcData({ core: '', sheets: '', thickness: '' }); } }} style={{ background: weightCalcOpen === i ? '#007835' : 'none', color: weightCalcOpen === i ? '#fff' : '#007835', border: '1px solid #007835', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Calculate</button>
+                    {palletWeights.map((w, i) => (
+                      <div key={i}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 74 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: (sizeReady && !weightsReady) ? '#fff' : '#007835', flexShrink: 0 }}></div>
+                            <span className="qwtag" style={{ fontSize: 14, fontWeight: 500, color: (sizeReady && !weightsReady) ? '#fff' : '#22302a' }}>Pallet {i + 1}</span>
                           </div>
-                          {weightCalcOpen === i && (
-                            <div style={{ marginLeft: 22, marginTop: 8, padding: 12, borderRadius: 10, border: '1px dashed #007835', background: 'rgba(0,120,53,0.03)', maxWidth: 440 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: '#007835' }}>Weight calculator</span>
-                                <span onClick={() => setWeightCalcOpen(null)} style={{ fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>✕</span>
-                              </div>
-                              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                                <div>
-                                  <div style={{ fontSize: 12, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Panel core</div>
-                                  <select style={{ width: 150, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #dde5e0', fontSize: 13.5, fontFamily: 'inherit', background: '#fff', color: '#22302a' }} value={weightCalcData.core} onChange={e => setWeightCalcData(prev => ({...prev, core: e.target.value}))}>
-                                    <option value="">Select</option>
-                                    {PANEL_CORES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                                  </select>
-                                </div>
-                                {weightCalcData.core && (<>
-                                  <div>
-                                    <div style={{ fontSize: 12, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Sheets</div>
-                                    <input style={{...styles.input, width: 80, fontSize: 13.5, padding: '8px 10px', textAlign: 'center'}} value={weightCalcData.sheets} onChange={e => setWeightCalcData(prev => ({...prev, sheets: e.target.value.replace(/\D/g, '')}))} />
-                                  </div>
-                                  <div>
-                                    <div style={{ fontSize: 12, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Thickness (mm)</div>
-                                    <input style={{...styles.input, width: 100, fontSize: 13.5, padding: '8px 10px', textAlign: 'center'}} value={weightCalcData.thickness} onChange={e => setWeightCalcData(prev => ({...prev, thickness: e.target.value.replace(/[^\d.]/g, '')}))} />
-                                  </div>
-                                </>)}
-                              </div>
-                              {weightCalcData.core && weightCalcData.sheets && weightCalcData.thickness && (() => {
-                                const core = PANEL_CORES.find(c => c.id === weightCalcData.core);
-                                const ps = PALLET_SIZES.find(p => p.id === palletSize);
-                                const pW = ps && ps.w ? ps.w : 2440;
-                                const pL = ps && ps.l ? ps.l : 1220;
-                                const calcKg = Math.round((parseFloat(weightCalcData.thickness) * pW * pL * parseInt(weightCalcData.sheets) * core.density) / 1000000000 + 20);
-                                return (
-                                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 10 }}>
-                                    <span style={{ fontSize: 13, fontWeight: 600, color: '#22302a' }}>= {calcKg}kg</span>
-                                    <button onClick={() => { const next = [...palletWeights]; next[i] = String(calcKg); setPalletWeights(next); setWeightCalcOpen(null); }} style={{ fontSize: 12.5, fontWeight: 700, background: '#007835', color: '#fff', border: 'none', padding: '7px 15px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit' }}>Apply</button>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          )}
+                          <div style={{ position: 'relative', width: 110 }}>
+                            <input style={{...styles.input, width: '100%', fontSize: 15, padding: '8px 30px 8px 10px', textAlign: 'center', borderColor: parseInt(w) > 2000 ? '#b5471c' : undefined, background: parseInt(w) > 2000 ? '#fff4e8' : undefined}} value={w} onChange={e => { const next = [...palletWeights]; next[i] = e.target.value.replace(/\D/g, ''); setPalletWeights(next); }} onKeyDown={handleKeyDown} />
+                            <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#94a3b8', pointerEvents: 'none' }}>kg</span>
+                          </div>
+                          <button className={"qcalcbtn" + (weightCalcOpen === i ? " on" : "")} onClick={() => { if (weightCalcOpen === i) { setWeightCalcOpen(null); } else { setWeightCalcOpen(i); setWeightCalcData({ core: '', sheets: '', thickness: '' }); } }}>Calculate</button>
                         </div>
-                      ))}
-                    </div>
+                        {parseInt(w) > 2000 && (
+                          <div className="qover" style={{ marginLeft: 22 }}>Over 2,000kg — {haulier} can't carry a single pallet this heavy, so no rate will be shown. Check the weight is correct before proceeding.</div>
+                        )}
+                        {weightCalcOpen === i && (
+                          <div style={{ marginLeft: 22, marginTop: 8, padding: 12, borderRadius: 10, border: '1px solid #cce8d6', background: '#fff', maxWidth: 440 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#007835' }}>Weight calculator</span>
+                              <span onClick={() => setWeightCalcOpen(null)} style={{ fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>X</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                              <div>
+                                <div style={{ fontSize: 12, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Panel core</div>
+                                <select style={{ width: 150, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #dde5e0', fontSize: 13.5, fontFamily: 'inherit', background: '#fff', color: '#22302a' }} value={weightCalcData.core} onChange={e => setWeightCalcData(prev => ({...prev, core: e.target.value}))}>
+                                  <option value="">Select</option>
+                                  {PANEL_CORES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                </select>
+                              </div>
+                              {weightCalcData.core && (<>
+                                <div>
+                                  <div style={{ fontSize: 12, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Sheets</div>
+                                  <input style={{...styles.input, width: 80, fontSize: 13.5, padding: '8px 10px', textAlign: 'center'}} value={weightCalcData.sheets} onChange={e => setWeightCalcData(prev => ({...prev, sheets: e.target.value.replace(/\D/g, '')}))} />
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 12, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Thickness (mm)</div>
+                                  <input style={{...styles.input, width: 100, fontSize: 13.5, padding: '8px 10px', textAlign: 'center'}} value={weightCalcData.thickness} onChange={e => setWeightCalcData(prev => ({...prev, thickness: e.target.value.replace(/[^\d.]/g, '')}))} />
+                                </div>
+                              </>)}
+                            </div>
+                            {weightCalcData.core && weightCalcData.sheets && weightCalcData.thickness && (() => {
+                              const core = PANEL_CORES.find(c => c.id === weightCalcData.core);
+                              const ps = PALLET_SIZES.find(p => p.id === palletSize);
+                              const pW = palletSize === 'custom' ? (parseInt(customW) || 2440) : (ps && ps.w ? ps.w : 2440);
+                              const pL = palletSize === 'custom' ? (parseInt(customL) || 1220) : (ps && ps.l ? ps.l : 1220);
+                              const calcKg = Math.round((parseFloat(weightCalcData.thickness) * pW * pL * parseInt(weightCalcData.sheets) * core.density) / 1000000000 + 20);
+                              return (
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 10 }}>
+                                  <span style={{ fontSize: 13, fontWeight: 600, color: '#22302a' }}>= {calcKg}kg</span>
+                                  <button onClick={() => { const next = [...palletWeights]; next[i] = String(calcKg); setPalletWeights(next); setWeightCalcOpen(null); }} style={{ fontSize: 12.5, fontWeight: 700, background: '#007835', color: '#fff', border: 'none', padding: '7px 15px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit' }}>Apply</button>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>)}
+
+                {/* STEP: surcharges */}
+                {shown('surch') && (<div className={stepCls('surch')}>
+                  <span className="qlab">Surcharges</span>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{SURCHARGES.filter(s => !(s.id === 'hand' && haulier === 'CDL')).map(s => { const price = s.prices && s.prices[haulier]; return (<div key={s.id} className={"qpill" + (selectedSurcharges.includes(s.id) ? " on" : "")} onClick={() => toggleSurcharge(s.id)}>{s.label}{price ? <span className="qsub">£{price}</span> : null}</div>); })}</div>
+                  <div className="qnote">AM delivery is included by default — deselect if not required.</div>
+                </div>)}
+
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {shown('surch') && <button style={{...styles.goBtn, width: 'auto', padding: '13px 48px', opacity: canCalculate && sizeReady ? 1 : 0.4}} onClick={doCalculate} disabled={!canCalculate || !sizeReady}>Get Rate</button>}
+                  <button style={{...styles.clearBtn, width: 'auto', padding: '13px 32px'}} onClick={clearQuote}>Clear</button>
                 </div>
-                <div style={{ marginBottom: 18 }}>
-                    <div style={styles.stepLabel}>Surcharges</div>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{SURCHARGES.filter(s => !(s.id === 'hand' && haulier === 'CDL')).map(s => { const price = s.prices && s.prices[haulier]; return (<div key={s.id} style={styles.pill(selectedSurcharges.includes(s.id))} onClick={() => toggleSurcharge(s.id)}>{s.label}{price ? <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 4 }}>£{price}</span> : null}</div>); })}</div>
-                </div>
-                <button style={{...styles.goBtn, width: 'auto', padding: '13px 48px', opacity: (palletSize === 'custom' && (!customW || !customL)) ? 0.4 : 1}} onClick={doCalculate} disabled={palletSize === 'custom' && (!customW || !customL)}>Get Rate</button>
-              </>)}
+                </>);
+              })()}
               </div>)}
             </div>
           </div>
           {/* PANE 3 */}
           <div style={{ flex: '0.85 1 0', display: 'flex', minWidth: 0 }}>
             <div style={{ background: '#fff', border: result && !result.errors?.length ? '1px solid #cce8d6' : '1px solid #dde5e0', borderTop: result && !result.errors?.length ? '3px solid #007835' : result && result.errors?.length ? '3px solid #b5471c' : '1px solid #dde5e0', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 2px rgba(20,40,30,.06)', flex: 1, overflowY: 'auto' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: result ? '#007835' : '#53605a', marginBottom: 14 }}>Result</div>
-              {!result ? (<div style={{ color: '#53605a', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{collection ? 'Fill in the form and press Get Rate' : 'Waiting for input'}</div>
-              ) : result.errors.length > 0 ? (<div>{result.errors.map((e, i) => (<div key={i} style={{ padding: '12px 14px', borderRadius: 12, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 13, fontWeight: 500, marginTop: i > 0 ? 6 : 0, lineHeight: 1.5 }}>{e}</div>))}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', background: '#007835', padding: '10px 14px', borderRadius: '12px 12px 0 0', margin: '-18px -20px 14px' }}>Result</div>
+              {isMergedMode ? (
+                /* MERGED MODE RESULT */
+                !immResult ? (<div style={{ color: '#53605a', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>Fill in the form and press Calculate</div>
+                ) : immResult.errors.length > 0 ? (<div>{immResult.errors.map((e, i) => <div key={i} style={{ padding: '12px 14px', borderRadius: 12, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 13, fontWeight: 500, marginTop: i > 0 ? 6 : 0 }}>{e}</div>)}{jobCopyBlock(buildImmJobText(), 'jobimm')}</div>
+                ) : (<>
+                  <div style={{ fontSize: 13, color: '#53605a', marginBottom: 10, fontWeight: 500 }}>{immResult.zone}</div>
+                  {(() => {
+                    const recW = immResult.warnings.find(w => w.startsWith("HIGHLY recommended") || w.startsWith("Recommended"));
+                    const hasHeightFlag = immResult.palletHeightFlags && immResult.palletHeightFlags.length > 0;
+                    // A height flag means the sheet count is likely wrong, so NO rate (Immingham or CDL)
+                    // should be shown from that suspect data. Suppress everything and prompt to check.
+                    if (hasHeightFlag) {
+                      return (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#fff4e8', border: '1.5px solid #d98a63', marginBottom: 12 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#b5471c' }}>⚠ Check pallet details</div><div style={{ fontSize: 12.5, color: '#b5471c', marginTop: 4 }}>One or more pallets is unusually tall, which usually means the sheet quantity is wrong. No rate is shown until the pallet details are corrected. If the quantity is genuinely correct, obtain a quote directly from Immingham.</div></div>);
+                    }
+                    if (recW) {
+                      const isH = recW.startsWith("HIGHLY");
+                      return (<div style={{ padding: '14px 16px', borderRadius: 12, background: isH ? '#fff4e8' : '#fdf3e7', border: isH ? '1.5px solid #d98a63' : '1.5px solid #eedbbd', marginBottom: 12 }}><div style={{ fontSize: 14, fontWeight: 700, color: isH ? '#b5471c' : '#b87020' }}>⚠ {isH ? 'Highly recommended' : 'Recommended'}</div><div style={{ fontSize: 12.5, color: isH ? '#b5471c' : '#b87020', marginTop: 4 }}>Obtain a quote directly from Immingham for this job.</div>{jobCopyBlock(buildImmJobText(), 'jobimm2')}</div>);
+                    }
+                    return (<>
+                      <div style={{ padding: '20px 22px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', borderTop: '3px solid #0a5f2d', position: 'relative', marginBottom: 8 }}><div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 6 }}>Immingham Charge</div><div style={{ fontFamily: 'Figtree', fontSize: 34, fontWeight: 800, color: '#22302a' }}>£{immResult.charge.toFixed(2)}</div><button style={{ position: 'absolute', top: 10, right: 10, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleImmCopy(immResult.charge)}>{immCopied ? '✓' : 'Copy'}</button></div>
+                      {immResult.courier && <div style={{ padding: '10px 12px', borderRadius: 10, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 12.5, marginTop: 6 }}><span style={{ fontWeight: 700 }}>Courier viability: </span>{immResult.courier}</div>}
+                    </>);
+                  })()}
+                  <div style={{ height: 12 }} />
+                  {(immResult.palletHeightFlags && immResult.palletHeightFlags.length > 0) ? null : immResult.cdl && immResult.cdl.errors && immResult.cdl.errors.length > 0 ? (
+                    <div style={{ padding: '12px 14px', borderRadius: 12, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 12.5 }}>CDL: {immResult.cdl.errors[0]}</div>
+                  ) : immResult.cdl ? (<>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#53605a', marginBottom: 6 }}>CDL comparison — {immResult.cdl.zone}{immResult.cdl.estimated ? ' (estimate)' : ''}</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {immResult.cdl.nd !== null ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', borderTop: '3px solid #0a5f2d', position: 'relative', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 4, paddingRight: 52 }}>CDL Next Day</div><div style={{ fontFamily: 'Figtree', fontSize: 20, fontWeight: 800, color: '#22302a' }}>£{immResult.cdl.nd.toFixed(2)}</div><button style={{ position: 'absolute', top: 8, right: 8, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleCopy(immResult.cdl.nd, 'cdlnd')}>{copied === 'cdlnd' ? '✓' : 'Copy'}</button></div>) : immResult.cdl.breakdown?.ndNote ? (<div style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: '1px solid #dde5e0', fontSize: 12.5, color: '#53605a' }}>ND: {immResult.cdl.breakdown.ndNote}</div>) : null}
+                      {immResult.cdl.eco !== null ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', position: 'relative', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 4, paddingRight: 52 }}>CDL Economy</div><div style={{ fontFamily: 'Figtree', fontSize: 20, fontWeight: 800, color: '#22302a' }}>£{immResult.cdl.eco.toFixed(2)}</div><button style={{ position: 'absolute', top: 8, right: 8, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleCopy(immResult.cdl.eco, 'cdleco')}>{copied === 'cdleco' ? '✓' : 'Copy'}</button></div>) : immResult.cdl.breakdown?.ecoNote ? (<div style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: '1px solid #dde5e0', fontSize: 12.5, color: '#53605a' }}>Eco: {immResult.cdl.breakdown.ecoNote}</div>) : null}
+                    </div>
+                    {immResult.cdl.warnings.filter(w => !w.includes('2,000kg')).map((w, i) => (<div key={'cw'+i} style={{ padding: '8px 12px', borderRadius: 10, fontSize: 12.5, marginTop: 6, fontWeight: 500, background: '#fdf3e7', border: '1.5px solid #eedbbd', color: '#b87020' }}>{w}</div>))}
+
+                  </>) : (<div style={{ fontSize: 12.5, color: '#53605a' }}>CDL doesn't cover this postcode.</div>)}
+                  <button onClick={() => setShowCalcs(!showCalcs)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: '#007835', padding: '10px 0 0' }}>{showCalcs ? '▲ Hide' : '▼ Show calculations'}</button>
+                  {showCalcs && (<div style={{ marginTop: 6, fontSize: 12.5, color: '#53605a', lineHeight: 1.6 }}>
+                    {(!immResult.warnings || immResult.warnings.length === 0) && <div>Immingham — actual: {immResult.breakdown.actualWeight}kg | volumetric: {immResult.breakdown.volWeight}kg | charged at: {immResult.breakdown.bracketWeight}kg bracket</div>}
+                    {immResult.cdl && immResult.cdl.breakdown?.nd && <div>CDL ND — £{immResult.cdl.breakdown.nd.base?.toFixed(2)} base + £{immResult.cdl.breakdown.nd.surcharges?.toFixed(2)} surch + £{immResult.cdl.breakdown.nd.fuel?.toFixed(2)} fuel</div>}
+                    {immResult.cdl && immResult.cdl.breakdown?.eco && <div>CDL Eco — £{immResult.cdl.breakdown.eco.base?.toFixed(2)} base + £{immResult.cdl.breakdown.eco.surcharges?.toFixed(2)} surch + £{immResult.cdl.breakdown.eco.fuel?.toFixed(2)} fuel</div>}
+                    {immResult.info.map((n, i) => (<div key={'in'+i} style={{ padding: '5px 10px', borderRadius: 8, background: '#f1f9f3', border: '1px solid #cce8d6', color: '#0a5f2d', fontSize: 12, marginTop: 4 }}>{n}</div>))}
+                    {immResult.cdl && immResult.cdl.info.map((n, i) => (<div key={'ci'+i} style={{ padding: '5px 10px', borderRadius: 8, background: '#f1f9f3', border: '1px solid #cce8d6', color: '#0a5f2d', fontSize: 12, marginTop: 4 }}>{n}</div>))}
+                  </div>)}
+                </>)
+              ) : (
+              /* STANDARD PALLET NETWORK RESULT */
+              !result ? (<div style={{ color: '#53605a', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{collection ? 'Fill in the form and press Get Rate' : 'Waiting for input'}</div>
+              ) : result.errors.length > 0 ? (<div>{result.errors.map((e, i) => (<div key={i} style={{ padding: '12px 14px', borderRadius: 12, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 13, fontWeight: 500, marginTop: i > 0 ? 6 : 0, lineHeight: 1.5 }}>{e}</div>))}{jobCopyBlock(buildNetworkJobText(), 'jobnet')}</div>
               ) : (<>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
                   {[postcode.toUpperCase() + ' · ' + (result.zone || ''), qty + 'x ' + palletSize, ...palletWeights.filter(w => w).map((w, i) => qty === 1 ? w + 'kg' : 'P' + (i+1) + ': ' + w + 'kg'), ...selectedSurcharges.map(s => SURCHARGES.find(x => x.id === s)?.label)].filter(Boolean).map((t, i) => (
@@ -1854,8 +2242,8 @@ function RateLookupApp() {
                 </div>
                 {result.estimated && <div style={{ padding: '6px 12px', borderRadius: 8, background: '#fdf3e7', border: '1px solid #eedbbd', fontSize: 12.5, color: '#b87020', fontWeight: 500, marginBottom: 10 }}>Zone not on rate sheet — best estimate</div>}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  {result.nd !== null ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', borderTop: '3px solid #0a5f2d', position: 'relative', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 4 }}>Next Day</div><div style={{ fontFamily: 'Figtree', fontSize: 24, fontWeight: 800, color: '#22302a' }}>£{result.nd.toFixed(2)}</div><button style={{ position: 'absolute', top: 8, right: 8, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleCopy(result.nd, 'nd')}>{copied === 'nd' ? '✓' : 'Copy'}</button></div>) : result.breakdown?.ndNote ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#fff', border: '1px solid #dde5e0', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#53605a', marginBottom: 4 }}>Next Day</div><div style={{ fontSize: 13, fontWeight: 500, color: '#53605a' }}>{result.breakdown.ndNote}</div></div>) : null}
-                  {result.eco !== null ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', position: 'relative', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 4 }}>Economy</div><div style={{ fontFamily: 'Figtree', fontSize: 24, fontWeight: 800, color: '#22302a' }}>£{result.eco.toFixed(2)}</div><button style={{ position: 'absolute', top: 8, right: 8, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleCopy(result.eco, 'eco')}>{copied === 'eco' ? '✓' : 'Copy'}</button></div>) : result.breakdown?.ecoNote ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#fff', border: '1px solid #dde5e0', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#53605a', marginBottom: 4 }}>Economy</div><div style={{ fontSize: 13, fontWeight: 500, color: '#53605a' }}>{result.breakdown.ecoNote}</div></div>) : null}
+                  {result.nd !== null ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', borderTop: '3px solid #0a5f2d', position: 'relative', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 4, paddingRight: 52 }}>Next Day</div><div style={{ fontFamily: 'Figtree', fontSize: 24, fontWeight: 800, color: '#22302a' }}>£{result.nd.toFixed(2)}</div><button style={{ position: 'absolute', top: 8, right: 8, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleCopy(result.nd, 'nd')}>{copied === 'nd' ? '✓' : 'Copy'}</button></div>) : result.breakdown?.ndNote ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#fff', border: '1px solid #dde5e0', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#53605a', marginBottom: 4 }}>Next Day</div><div style={{ fontSize: 13, fontWeight: 500, color: '#53605a' }}>{result.breakdown.ndNote}</div></div>) : null}
+                  {result.eco !== null ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', position: 'relative', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 4, paddingRight: 52 }}>Economy</div><div style={{ fontFamily: 'Figtree', fontSize: 24, fontWeight: 800, color: '#22302a' }}>£{result.eco.toFixed(2)}</div><button style={{ position: 'absolute', top: 8, right: 8, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleCopy(result.eco, 'eco')}>{copied === 'eco' ? '✓' : 'Copy'}</button></div>) : result.breakdown?.ecoNote ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#fff', border: '1px solid #dde5e0', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#53605a', marginBottom: 4 }}>Economy</div><div style={{ fontSize: 13, fontWeight: 500, color: '#53605a' }}>{result.breakdown.ecoNote}</div></div>) : null}
                 </div>
                 {result.courier && <div style={{ padding: '10px 12px', borderRadius: 10, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 12.5, marginTop: 6, lineHeight: 1.5 }}><span style={{ fontWeight: 700 }}>Courier: </span>{result.courier}</div>}
                 {result.warnings.map((w, i) => (<div key={'w'+i} style={{ padding: '8px 12px', borderRadius: 10, fontSize: 12.5, marginTop: 6, lineHeight: 1.5, fontWeight: 500, background: w.includes('2,000kg') ? '#fff4e8' : '#fdf3e7', border: w.includes('2,000kg') ? '1.5px solid #d98a63' : '1.5px solid #eedbbd', color: w.includes('2,000kg') ? '#b5471c' : '#b87020' }}>{w}</div>))}
@@ -1865,236 +2253,13 @@ function RateLookupApp() {
                   {result.breakdown?.eco && <div>Eco: £{result.breakdown.eco.base?.toFixed(2)} base + £{result.breakdown.eco.surcharges?.toFixed(2)} surch + £{result.breakdown.eco.fuel?.toFixed(2)} fuel ({result.fuelPct?.toFixed(1)}%)</div>}
                   {result.info?.map((n, i) => (<div key={i} style={{ padding: '5px 10px', borderRadius: 8, background: '#f1f9f3', border: '1px solid #cce8d6', color: '#3D5332', fontSize: 12, marginTop: 3 }}>{n}</div>))}
                 </div>)}
-                <div style={{ borderTop: '1px solid #dde5e0', marginTop: 12, paddingTop: 10 }}><button onClick={() => { setResult(null); setShowCalcs(false); }} style={{ background: '#fff', border: '1.5px solid #007835', borderRadius: 9, padding: '8px 18px', fontSize: 13, fontWeight: 700, color: '#007835', cursor: 'pointer', fontFamily: 'Figtree' }}>← Edit quote</button></div>
-              </>)}
+                {result.nd === null && result.eco === null && jobCopyBlock(buildNetworkJobText(), 'jobnet2')}
+              </>))}
             </div>
           </div>
         </div>
-      ) : (
-        /* IMMINGHAM TAB - two panes */
-        <div style={{ flex: 1, display: 'flex', gap: 12, padding: '12px 14px', overflow: 'hidden', minHeight: 0 }}>
-          {/* PANE A: Form */}
-          <div style={{ flex: '1.1 1 0', display: 'flex', minWidth: 0 }}>
-            <div style={{ background: '#fff', border: '1px solid #dde5e0', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 2px rgba(20,40,30,.06)', flex: 1, overflowY: 'auto' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: '#007835', marginBottom: 14 }}>Quote details</div>
-              <div style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 20, background: '#fdf3e7', border: '1px solid #eedbbd', color: '#b87020', fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Jobs that aren't 8x4: quote directly from Immingham</div>
-              <div style={{ marginBottom: 18 }}>
-                <div style={styles.stepLabel}>Delivery Postcode <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontStyle: 'italic' }}></span></div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <input style={{...styles.input, width: 180, fontSize: 17, padding: '10px 14px', fontWeight: 600, borderColor: immPostcode.length >= 2 && !matchImmZone(immPostcode) ? '#b5471c' : immPostcode.length >= 2 && isImmROR(immPostcode) ? '#b87020' : '#007835', borderWidth: '1.5px'}} value={immPostcode} onChange={e => setImmPostcode(cleanPostcodeInput(e.target.value))} onKeyDown={e => { if (e.key === 'Enter' && immPostcode.length >= 2) doImmCalc(); }} placeholder="" />
-                  {immPostcode.length >= 2 && isImmROR(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>Rate on Request — contact Immingham</span>)}
-                  {immPostcode.length >= 2 && !isImmROR(immPostcode) && !matchImmZone(immPostcode) && (<span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', color: '#b5471c', fontSize: 13, fontWeight: 600 }}>{extractPostcodeArea(immPostcode).invalid ? 'Not a valid postcode' : 'Not found in Immingham zones'}</span>)}
-                  {immPostcode.length >= 2 && !isImmROR(immPostcode) && matchImmZone(immPostcode) && (<><span style={{ padding: '7px 14px', borderRadius: 20, background: '#e8f5ec', border: '1px solid #cce8d6', fontSize: 13, color: '#007835', fontWeight: 700 }}>{matchImmZone(immPostcode)}</span>{!isPlausibleDistrict(immPostcode) && <span style={{ padding: '7px 14px', borderRadius: 20, background: '#fff4e8', border: '1px solid #f3d9c2', fontSize: 13, color: '#b5471c', fontWeight: 600, marginLeft: 8 }}>District may not exist — double-check</span>}</>)}
-                </div>
-              </div>
+      ))()}
 
-            {/* Rest of form - only shows after valid postcode entered */}
-            {immPostcode.length >= 2 && !isImmROR(immPostcode) && matchImmZone(immPostcode) && (<>
-              {immLines.map((line, idx) => (
-                <div key={idx} style={{ marginBottom: 10, padding: '12px 14px', borderRadius: 10, border: '1px solid #dde5e0', background: '#fff' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#53605a' }}>Product {idx + 1}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div onClick={() => toggleMixed(idx)} style={{ padding: '6px 13px', borderRadius: 20, border: line.mixed ? '1.5px solid #007835' : '1.5px solid #dde5e0', background: line.mixed ? '#f1f9f3' : '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: line.mixed ? 700 : 500, color: line.mixed ? '#007835' : '#53605a' }}>{line.mixed ? '✓ ' : ''}Mixed pallet</div>
-                      {immLines.length > 1 && <button onClick={() => setImmLines(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>✕</button>}
-                    </div>
-                  </div>
-
-                  {/* Main material line */}
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <div>
-                      <div style={{ fontSize: 12.5, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Material</div>
-                      <select style={{...selectStyle, width: 200 }} value={line.material} onChange={e => updateImmLine(idx, 'material', e.target.value)}>
-                        <option value="">Select material</option>
-                        {IMM_MATERIALS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                      </select>
-                    </div>
-                    {line.material && (<>
-                      <div>
-                        <div style={{ fontSize: 12.5, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Total sheets</div>
-                        <input style={{...smallInput, width: 96}} value={line.sheets} onChange={e => updateImmLine(idx, 'sheets', e.target.value.replace(/\D/g, ''))} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 12.5, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Thickness (mm)</div>
-                        <input style={{...smallInput, width: 106}} value={line.thickness} onChange={e => updateImmLine(idx, 'thickness', e.target.value.replace(/[^\d.]/g, ''))} />
-                      </div>
-                    </>)}
-                  </div>
-
-                  {/* Mixed pallet sub-lines */}
-                  {line.mixed && line.subLines && line.subLines.map((sub, subIdx) => (
-                    <div key={subIdx} style={{ borderTop: '1px dashed #dde5e0', paddingTop: 8, marginTop: 10 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <div style={{ fontSize: 12, color: '#53605a', fontWeight: 500 }}>+ Also on this pallet</div>
-                        <button onClick={() => removeSubLine(idx, subIdx)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#94a3b8' }}>✕</button>
-                      </div>
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                        <select style={{...selectStyle, width: 200}} value={sub.material} onChange={e => updateSubLine(idx, subIdx, 'material', e.target.value)}>
-                          <option value="">Select material</option>
-                          {IMM_MATERIALS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                        </select>
-                        {sub.material && (<>
-                          <div>
-                            <div style={{ fontSize: 12.5, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Total sheets</div>
-                            <input style={{...smallInput, width: 96}} value={sub.sheets} onChange={e => updateSubLine(idx, subIdx, 'sheets', e.target.value.replace(/\D/g, ''))} />
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 12.5, color: '#53605a', fontWeight: 500, marginBottom: 3 }}>Thickness (mm)</div>
-                            <input style={{...smallInput, width: 106}} value={sub.thickness} onChange={e => updateSubLine(idx, subIdx, 'thickness', e.target.value.replace(/[^\d.]/g, ''))} />
-                          </div>
-                        </>)}
-                      </div>
-                    </div>
-                  ))}
-                  {(line.mixed || (line.material && line.sheets && line.thickness)) && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: 10, paddingTop: 10, borderTop: '1px solid #eef2ef' }}>
-                      <div>{line.mixed && (<button onClick={() => addSubLine(idx)} style={{ background: 'none', border: '1px dashed #007835', borderRadius: 9, padding: '6px 12px', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: '#007835', fontFamily: 'inherit' }}>+ Add material to this pallet</button>)}</div>
-                      {line.material && line.sheets && line.thickness && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, padding: '6px 12px', borderRadius: 8, background: '#eef2ef', border: '1px solid #dde5e0' }}>
-                          <span style={{ color: '#53605a', fontWeight: 500 }}>Packed on</span>
-                          <input style={{...smallInput, width: 48, padding: '5px 6px'}} value={line.pallets} onChange={e => updateImmLine(idx, 'pallets', e.target.value.replace(/\D/g, ''))} />
-                          <span style={{ color: '#53605a', fontWeight: 500 }}>pallets</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Add another product */}
-              <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                <button onClick={() => setImmLines(prev => [...prev, {material:'',thickness:'',pallets:'',sheets:'',mixed:false,subLines:[]}])} style={{ background: 'none', border: '1px dashed #007835', borderRadius: 9, padding: '8px 18px', fontSize: 13, fontWeight: 600, color: '#007835', cursor: 'pointer', fontFamily: 'inherit' }}>+ Add another product</button>
-              </div>
-
-              <div style={styles.step}><div style={styles.pill(immHandball)} onClick={() => setImmHandball(!immHandball)}>Handball (£20 per consignment)</div></div>
-              {(() => {
-                const immReady = immLines.some(l => l.material && l.sheets && l.thickness && l.pallets);
-                return <button style={{...styles.goBtn, width: 'auto', padding: '13px 48px', background: '#007835', opacity: immReady ? 1 : 0.4}} onClick={doImmCalc} disabled={!immReady}>Calculate</button>;
-              })()}
-            </>)}
-            </div>
-          </div>
-          {/* PANE B: Result */}
-          <div style={{ flex: '0.9 1 0', display: 'flex', minWidth: 0 }}>
-            <div style={{ background: '#fff', border: immResult && !immResult.errors?.length ? '1px solid #cce8d6' : '1px solid #dde5e0', borderTop: immResult && !immResult.errors?.length ? '3px solid #007835' : immResult && immResult.errors?.length ? '3px solid #b5471c' : '1px solid #dde5e0', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 2px rgba(20,40,30,.06)', flex: 1, overflowY: 'auto' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: immResult ? '#007835' : '#53605a', marginBottom: 14 }}>Result</div>
-              {!immResult ? (<div style={{ color: '#53605a', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>Fill in the form and press Calculate</div>) : (<div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
-              {[immResult.zone, immPostcode.toUpperCase(), immHandball ? 'Handball' : null, ...immLines.filter(l => l.material).map(l => { const mat = IMM_MATERIALS.find(m => m.id === l.material); return mat ? mat.label+' '+l.thickness+'mm x'+l.sheets : null; })].filter(Boolean).map((t, i) => (
-                <span key={i} style={{ padding: '5px 12px', borderRadius: 20, background: i === 0 ? '#00783515' : '#eef2ef', fontSize: 11, fontWeight: 600, color: i === 0 ? '#007835' : '#53605a', border: '1px solid '+(i === 0 ? '#00783530' : '#dde5e0') }}>{t}</span>
-              ))}
-            </div>
-            {immResult.errors.length > 0 ? (
-              <div>{immResult.errors.map((e, i) => (<div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 14, fontWeight: 500, marginTop: i > 0 ? 8 : 0, lineHeight: 1.5 }}>{e}</div>))}</div>
-            ) : (<>
-              {/* Charge card - integrated with warnings */}
-              {immResult.warnings && immResult.warnings.length > 0 ? (
-                <div>
-                  {/* Warning card replaces the charge card */}
-                  {immResult.warnings.map((w, i) => {
-                    const isHighly = w.startsWith('HIGHLY');
-                    return (
-                      <div key={i} style={{ padding: '18px 20px', borderRadius: 12, background: isHighly ? '#fff4e8' : '#fdf3e7', border: isHighly ? '1.5px solid #d98a63' : '1.5px solid #eedbbd', marginBottom: 8 }}>
-                        <div style={{ fontSize: 22, fontWeight: 700, color: isHighly ? '#b5471c' : '#b87020', marginBottom: 6 }}>{isHighly ? '⚠ Highly recommended' : 'Recommended'}</div>
-                        <div style={{ fontSize: 14, color: isHighly ? '#b5471c' : '#b87020', lineHeight: 1.6, marginBottom: 12 }}>Obtain a quote directly from Immingham for this job.</div>
-
-                      </div>
-                    );
-                  })}
-
-                </div>
-              ) : (
-                /* No warnings - show charge card directly */
-                <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-                  <div style={{ padding: '20px 22px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', borderTop: '3px solid #0a5f2d', position: 'relative', flex: 1, minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 6 }}>Immingham Charge</div><div style={{ fontFamily: 'Figtree', fontSize: 38, fontWeight: 800, color: '#22302a' }}>£{immResult.charge.toFixed(2)}</div><button style={styles.copyBtn} onClick={() => handleImmCopy(immResult.charge)}>{immCopied ? '✓' : 'Copy'}</button></div>
-                </div>
-              )}
-
-              {/* CDL Comparison */}
-              {immResult.cdl && immResult.charge && (() => {
-                const isSinglePallet = immResult.breakdown.totalPallets === 1;
-                const ndCheaper = immResult.cdl.nd !== null && immResult.cdl.nd < immResult.charge;
-                const ecoCheaper = immResult.cdl.eco !== null && immResult.cdl.eco < immResult.charge;
-                const hasWarnings = immResult.warnings && immResult.warnings.length > 0;
-                const bothCheaper = !hasWarnings && isSinglePallet && ndCheaper && ecoCheaper;
-                const oneCheaper = !hasWarnings && isSinglePallet && (ndCheaper || ecoCheaper) && !bothCheaper;
-                const anyCheaper = bothCheaper || oneCheaper;
-
-                const cdlCard = (service, rate, isCheaper) => (
-                  <div style={{ padding: '8px 12px', borderRadius: 10, background: '#fff', border: '1px solid #cce8d6', flex: '0 1 180px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#007835', textTransform: 'uppercase' }}>CDL {service}</div>
-                    <div style={{ fontFamily: 'Figtree', fontSize: 17, fontWeight: 700, color: '#22302a' }}>£{rate.toFixed(2)}</div>
-                    {(!immResult.warnings || immResult.warnings.length === 0) && <div style={{ fontSize: 12, color: isCheaper ? '#007835' : '#b5471c', fontWeight: 600, marginTop: 2 }}>{isCheaper ? '£'+(immResult.charge - rate).toFixed(2)+' cheaper' : '£'+(rate - immResult.charge).toFixed(2)+' more'}</div>}
-                  </div>
-                );
-                
-                return (<>
-                  {/* Auto-show when at least one CDL service is cheaper + 1 pallet */}
-                  {anyCheaper && (
-                    <div style={{ marginTop: 4, marginBottom: 8, padding: '12px 14px', borderRadius: 12, background: '#fff', border: '1px solid #cce8d6', maxWidth: 460 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0a5f2d', marginBottom: 6 }}>{bothCheaper ? 'CDL is cheaper' : 'CDL may be cheaper'}</div>
-                      <div style={{ fontSize: 13, color: '#53605a', marginBottom: 10 }}>{immResult.cdl.zone} — 1 x 8x4 = 2 pallet spaces. Includes AM surcharge.</div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        {immResult.cdl.nd !== null && cdlCard('Next Day', immResult.cdl.nd, ndCheaper)}
-                        {immResult.cdl.eco !== null && cdlCard('Economy', immResult.cdl.eco, ecoCheaper)}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Manual toggle when no CDL service is cheaper */}
-                  {!anyCheaper && !showCdlCompare && (
-                    <div style={{ textAlign: 'center', marginTop: 8 }}>
-                      <button onClick={() => setShowCdlCompare(true)} style={{ background: 'none', border: '1px solid #007835', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#007835', cursor: 'pointer' }}>Show CDL rate for comparison</button>
-                    </div>
-                  )}
-
-                  {/* Manual comparison view */}
-                  {!anyCheaper && showCdlCompare && (
-                    <div style={{ marginTop: 8, padding: '12px 14px', borderRadius: 12, background: '#eef2ef', border: '1px solid #dde5e0', maxWidth: 460 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#53605a' }}>CDL comparison ({immResult.cdl.zone}, {immResult.breakdown.totalPallets} x 8x4 = {immResult.breakdown.totalPallets * 2} spaces). Includes AM surcharge.</div>
-                        <button onClick={() => setShowCdlCompare(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>✕</button>
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        {immResult.cdl.nd !== null && cdlCard('Next Day', immResult.cdl.nd, ndCheaper)}
-                        {immResult.cdl.eco !== null && cdlCard('Economy', immResult.cdl.eco, ecoCheaper)}
-                        {!immResult.cdl.nd && !immResult.cdl.eco && (
-                          <div style={{ padding: '10px', fontSize: 13, color: '#53605a' }}>CDL rates not available for this postcode</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>);
-              })()}
-
-              {/* Courier viability */}
-              {immResult.courier && (
-                <div style={{ padding: '12px 14px', borderRadius: 10, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 13, marginTop: 8, lineHeight: 1.5 }}><span style={{ fontWeight: 700 }}>Courier viability: </span>{immResult.courier}</div>
-              )}
-
-              {/* Show calculations toggle */}
-              <div style={{ textAlign: 'center', marginTop: 8 }}>
-                <button onClick={() => setShowCalcs(!showCalcs)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#007835', padding: '6px 12px' }}>
-                  {showCalcs ? '▲ Hide calculations' : '▼ Show calculations'}
-                </button>
-              </div>
-              {showCalcs && (
-                <div style={{ marginTop: 6 }}>
-                  <div style={styles.breakdown}>
-                    <div>Actual: {immResult.breakdown.actualWeight}kg | Volumetric: {immResult.breakdown.volWeight}kg | Charged at: {immResult.breakdown.bracketWeight}kg bracket</div>
-                    {(!immResult.warnings || immResult.warnings.length === 0) && <div>Base rate: £{immResult.breakdown.baseRate.toFixed(2)}{immResult.breakdown.handballCharge > 0 ? ' + £20 handball' : ''} + £{immResult.breakdown.fuelCharge} fuel ({(IMM_FUEL*100).toFixed(0)}%). Excl. VAT.</div>}
-                  </div>
-                  {immResult.info.length > 0 && <div style={{ marginTop: 8 }}>{immResult.info.map((n, i) => (<div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: '#f1f9f3', border: '1px solid #cce8d6', color: '#3D5332', fontSize: 13, marginTop: i > 0 ? 4 : 0, lineHeight: 1.5 }}>{n}</div>))}</div>}
-                </div>
-              )}
-            </>)}
-                <div style={{ borderTop: '1px solid #dde5e0', marginTop: 12, paddingTop: 10 }}><button onClick={() => { setImmResult(null); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); }} style={{ background: '#fff', border: '1.5px solid #007835', borderRadius: 9, padding: '8px 18px', fontSize: 13, fontWeight: 700, color: '#007835', cursor: 'pointer', fontFamily: 'Figtree' }}>← Edit quote</button></div>
-              </div>)}
-            </div>
-          </div>
-        </div>
-      )}
-      
       </div>{/* end workspace */}
     </div>
   );
@@ -2114,6 +2279,7 @@ function RateLookupApp() {
 
 
     ReactDOM.render(React.createElement(RateLookupApp), document.getElementById('root'));
-  </script>
+
+</script>
 </body>
 </html>
