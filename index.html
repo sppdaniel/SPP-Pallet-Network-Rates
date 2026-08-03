@@ -1618,7 +1618,7 @@ const IMM_MATERIALS = [
   { id: "decmaple8x4", label: "Dec Maple 8x4", density: 615, w: 2440, l: 1220 },
 ];
 
-function calcImmingham(postcode, lines, handball) {
+function calcImmingham(postcode, lines, handball, timed) {
   const result = { charge: null, breakdown: {}, errors: [], warnings: [], info: [], zone: null, cdl: null };
   if (!postcode || postcode.length < 2) { result.errors.push("Enter a delivery postcode"); return result; }
 
@@ -1690,7 +1690,10 @@ function calcImmingham(postcode, lines, handball) {
 
   const baseRate = rates[bracketIdx];
   const handballCharge = handball ? 20 : 0;
-  const totalBeforeFuel = baseRate + handballCharge;
+  // Immingham offer a timed delivery for GBP 30, treated exactly like handball:
+  // added to the base before fuel, so fuel applies to it too.
+  const timedCharge = timed ? 30 : 0;
+  const totalBeforeFuel = baseRate + handballCharge + timedCharge;
   const total = +(totalBeforeFuel * (1 + IMM_FUEL)).toFixed(2);
 
   result.charge = total;
@@ -1698,7 +1701,7 @@ function calcImmingham(postcode, lines, handball) {
     actualWeight: +totalActualWeight.toFixed(2), volWeight: +volWeight.toFixed(0),
     chargeableWeight: +chargeableWeight.toFixed(2), bracketWeight,
     totalHeightMm: +totalHeightMm.toFixed(0), totalStacks, totalPallets,
-    baseRate, handballCharge, fuelCharge: +(totalBeforeFuel * IMM_FUEL).toFixed(2),
+    baseRate, handballCharge, timedCharge, fuelCharge: +(totalBeforeFuel * IMM_FUEL).toFixed(2),
   };
 
   if (volWeight > totalActualWeight) {
@@ -1756,7 +1759,7 @@ function calcImmingham(postcode, lines, handball) {
 
 // ============ MERGED IMMINGHAM + CDL CALCULATION ============
 function calcMerged(postcode, lines, handball, cdlSurcharges) {
-  const result = calcImmingham(postcode, lines, handball);
+  const result = calcImmingham(postcode, lines, handball, (cdlSurcharges || []).includes('timed'));
   if (result.errors.length > 0) return result;
 
   let heaviestPalletWeight = 0;
@@ -1817,6 +1820,9 @@ function RateLookupApp() {
   const [weightCalcData, setWeightCalcData] = useState({ core: '', sheets: '', thickness: '' });
   const [showCdlCompare, setShowCdlCompare] = useState(false);
   const [showImmRate, setShowImmRate] = useState(false);
+  // Small Vehicle carries no charge on either side. It is a flag: Immingham run large
+  // vehicles only, so their charge is covered when it is selected.
+  const [immSmallVehicle, setImmSmallVehicle] = useState(false);
   const [cdlSurcharges, setCdlSurcharges] = useState(['am']);
   const toggleCdlSurcharge = (id) => { setCdlSurcharges(prev => { if (prev.includes(id)) return prev.filter(s => s !== id); let next = [...prev, id]; if (id === 'am') next = next.filter(s => s !== 'timed'); if (id === 'timed') next = next.filter(s => s !== 'am'); return next; }); };
   const isMergedMode = collection === 'immingham';
@@ -1824,7 +1830,7 @@ function RateLookupApp() {
   useEffect(() => { if (collection && postcodeRef.current) postcodeRef.current.focus(); }, [collection]);
   // Clear stale result whenever quote inputs change, so an old rate can't be misread against new inputs
   useEffect(() => { if (result) { setResult(null); setShowCalcs(false); } }, [postcode, palletSize, customW, customL, palletWeights, selectedSurcharges, collection]);
-  useEffect(() => { if (immResult) { setImmResult(null); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); } }, [immPostcode, immLines, immHandball, cdlSurcharges]);
+  useEffect(() => { if (immResult) { setImmResult(null); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); } }, [immPostcode, immLines, immHandball, cdlSurcharges, immSmallVehicle]);
   const haulier = useMemo(() => { const cp = COLLECTION_POINTS.find(c => c.id === collection); return cp ? cp.haulier : null; }, [collection]);
 
   const handleCollectionSelect = (id) => { setCollection(id); setResult(null); setShowCollectionPicker(false); if (!startTime) setStartTime(Date.now()); };
@@ -1843,7 +1849,7 @@ function RateLookupApp() {
   // haulier) is deliberately kept -- use "New quote" to change collection point.
   const clearQuote = () => { setPostcode(''); setPalletSize(null); setPalletWeights(['']); setSelectedSurcharges(['am']); setResult(null); setCustomW(''); setCustomL(''); setShowCalcs(false); setWeightCalcOpen(null); setWeightCalcData({ core: '', sheets: '', thickness: '' }); if (postcodeRef.current) postcodeRef.current.focus(); };
   // Clears the Immingham quote fields. Collection point is deliberately kept.
-  const clearImmQuote = () => { setImmPostcode(''); setImmLines([{material:'',thickness:'',pallets:'',sheets:'',mixed:false,subLines:[]}]); setImmHandball(false); setCdlSurcharges(['am']); setImmResult(null); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); if (postcodeRef.current) postcodeRef.current.focus(); };
+  const clearImmQuote = () => { setImmPostcode(''); setImmLines([{material:'',thickness:'',pallets:'',sheets:'',mixed:false,subLines:[]}]); setImmHandball(false); setCdlSurcharges(['am']); setImmSmallVehicle(false); setImmResult(null); setShowCalcs(false); setShowCdlCompare(false); setShowImmRate(false); if (postcodeRef.current) postcodeRef.current.focus(); };
   // ===== Email-ready job summary, for when the app can't return a rate =====
   const NUM_WORDS = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
   const palletWord = n => (NUM_WORDS[n] || n) + ' pallet' + (n === 1 ? '' : 's');
@@ -2087,14 +2093,18 @@ function RateLookupApp() {
 
                 {/* STEP: delivery options (Immingham surcharge + CDL comparison options) */}
                 {ishown('options') && (<div className={istepCls('options')}>
-                  <span className="qlab">Immingham surcharge</span>
-                  <div className={"qpill" + (immHandball ? " on" : "")} onClick={() => setImmHandball(!immHandball)}>Handball<span className="qsub">£20 per consignment</span></div>
-                  <span className="qlab" style={{ marginTop: 14 }}>CDL delivery options</span>
+                  <span className="qlab">Services required</span>
+                  {/* One list, no prices on the pills. Where the money lands:
+                     Hand Offload  - Immingham GBP 20 + fuel. CDL do not charge for it.
+                     Timed         - Immingham GBP 30 + fuel, and CDL's own timed charge on the comparison.
+                     Small Vehicle - no charge either side, flag only.
+                     AM is always applied to the CDL comparison and has no pill. */}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <div className={"qpill" + (cdlSurcharges.includes('am') ? " on" : "")} onClick={() => toggleCdlSurcharge('am')}>AM Delivery<span className="qsub">£12</span></div>
-                    <div className={"qpill" + (cdlSurcharges.includes('timed') ? " on" : "")} onClick={() => toggleCdlSurcharge('timed')}>Timed Delivery<span className="qsub">£15</span></div>
+                    <div className={"qpill" + (immHandball ? " on" : "")} onClick={() => setImmHandball(!immHandball)}>Hand Offload</div>
+                    <div className={"qpill" + (cdlSurcharges.includes('timed') ? " on" : "")} onClick={() => setCdlSurcharges(cdlSurcharges.includes('timed') ? ['am'] : ['timed'])}>Timed Delivery</div>
+                    <div className={"qpill" + (immSmallVehicle ? " on" : "")} onClick={() => setImmSmallVehicle(!immSmallVehicle)}>Small Vehicle</div>
                   </div>
-                  <div className="qnote">AM delivery is included by default — deselect if not required.</div>
+                  <div className="qnote">AM delivery is included by default for CDL.</div>
                 </div>)}
 
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2257,6 +2267,20 @@ function RateLookupApp() {
                 !immResult ? (<div style={{ color: '#53605a', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>Fill in the form and press Calculate</div>
                 ) : immResult.errors.length > 0 ? (<div>{immResult.errors.map((e, i) => <div key={i} style={{ padding: '12px 14px', borderRadius: 12, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 13, fontWeight: 500, marginTop: i > 0 ? 6 : 0 }}>{e}</div>)}{jobCopyBlock(buildImmJobText(), 'jobimm')}</div>
                 ) : (<>
+                  {/* Cheapest-option banner, top of the pane. Guarded so it cannot appear
+                     when a height flag or a CDL error has voided the comparison, when either
+                     figure is missing, or when Small Vehicle already forces CDL. */}
+                  {(() => {
+                    if (immSmallVehicle) return null;
+                    if (immResult.palletHeightFlags && immResult.palletHeightFlags.length > 0) return null;
+                    if (!immResult.cdl || (immResult.cdl.errors && immResult.cdl.errors.length > 0)) return null;
+                    if (typeof immResult.charge !== 'number') return null;
+                    const vals = [immResult.cdl.nd, immResult.cdl.eco].filter(v => typeof v === 'number');
+                    if (!vals.length || Math.min(...vals) >= immResult.charge) return null;
+                    return (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#007835', marginBottom: 12, textAlign: 'center' }}>
+                      <div style={{ fontSize: 15.5, fontWeight: 700, color: '#fff', letterSpacing: '.01em' }}>Cheapest option - CDL</div>
+                    </div>);
+                  })()}
                   <div style={{ fontSize: 13, color: '#53605a', marginBottom: 10, fontWeight: 500 }}>{immResult.zone}</div>
                   {(() => {
                     const recW = immResult.warnings.find(w => w.startsWith("HIGHLY recommended") || w.startsWith("Recommended"));
@@ -2271,7 +2295,15 @@ function RateLookupApp() {
                       return (<div style={{ padding: '14px 16px', borderRadius: 12, background: isH ? '#fff4e8' : '#fdf3e7', border: isH ? '1.5px solid #d98a63' : '1.5px solid #eedbbd', marginBottom: 12 }}><div style={{ fontSize: 14, fontWeight: 700, color: isH ? '#b5471c' : '#b87020' }}>⚠ {isH ? 'Highly recommended' : 'Recommended'}</div><div style={{ fontSize: 12.5, color: isH ? '#b5471c' : '#b87020', marginTop: 4 }}>Obtain a quote directly from Immingham for this job.</div>{jobCopyBlock(buildImmJobText(), 'jobimm2')}</div>);
                     }
                     return (<>
-                      <div style={{ padding: '20px 22px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', borderTop: '3px solid #0a5f2d', position: 'relative', marginBottom: 8 }}><div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 6 }}>Immingham Charge</div><div style={{ fontFamily: 'Figtree', fontSize: 34, fontWeight: 800, color: '#22302a' }}>£{immResult.charge.toFixed(2)}</div><button style={{ position: 'absolute', top: 10, right: 10, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleImmCopy(immResult.charge)}>{immCopied ? '✓' : 'Copy'}</button></div>
+                      {(immSmallVehicle && !showImmRate) ? (
+                        <div style={{ padding: '15px 16px', borderRadius: 12, background: '#fdf3e7', border: '1.5px solid #eedbbd', marginBottom: 8 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#22302a', lineHeight: 1.4, marginBottom: 4 }}>Small Vehicle selected - use CDL only</div>
+                          <div style={{ fontSize: 12, color: '#53605a', lineHeight: 1.45, marginBottom: 11 }}>Immingham operate large vehicles only. Their rate for a large vehicle is available below.</div>
+                          <button onClick={() => setShowImmRate(true)} style={{ background: '#fff', border: '1.5px solid #007835', borderRadius: 9, padding: '8px 16px', fontSize: 13, fontWeight: 700, color: '#007835', fontFamily: 'Figtree', cursor: 'pointer' }}>Show rate</button>
+                        </div>
+                      ) : (<>
+                      <div style={{ padding: '20px 22px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', borderTop: '3px solid #0a5f2d', position: 'relative', marginBottom: 8 }}><div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 6 }}>Immingham Charge</div><div style={{ fontFamily: 'Figtree', fontSize: 34, fontWeight: 800, color: '#22302a' }}>£{immResult.charge.toFixed(2)}</div>{cdlSurcharges.includes('timed') && immResult.breakdown && immResult.breakdown.timedCharge ? (<div style={{ fontSize: 12, fontWeight: 700, color: '#22302a', marginTop: 5, lineHeight: 1.35 }}>Including £{immResult.breakdown.timedCharge} + fuel Timed Delivery surcharge</div>) : null}<button style={{ position: 'absolute', top: 10, right: 10, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleImmCopy(immResult.charge)}>{immCopied ? '✓' : 'Copy'}</button></div>
+                      </>)}
                       {immResult.courier && <div style={{ padding: '10px 12px', borderRadius: 10, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 12.5, marginTop: 6 }}><span style={{ fontWeight: 700 }}>Courier viability: </span>{immResult.courier}</div>}
                     </>);
                   })()}
@@ -2279,7 +2311,7 @@ function RateLookupApp() {
                   {(immResult.palletHeightFlags && immResult.palletHeightFlags.length > 0) ? null : immResult.cdl && immResult.cdl.errors && immResult.cdl.errors.length > 0 ? (
                     <div style={{ padding: '12px 14px', borderRadius: 12, background: '#fff4e8', border: '1.5px solid #d98a63', color: '#b5471c', fontSize: 12.5 }}>CDL: {immResult.cdl.errors[0]}</div>
                   ) : immResult.cdl ? (<>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#53605a', marginBottom: 6 }}>CDL comparison — {immResult.cdl.zone}{immResult.cdl.estimated ? ' (estimate)' : ''}</div>
+                                        <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#53605a', marginBottom: 6 }}>CDL comparison — {immResult.cdl.zone}{immResult.cdl.estimated ? ' (estimate)' : ''}</div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       {immResult.cdl.nd !== null ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', borderTop: '3px solid #0a5f2d', position: 'relative', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 4, paddingRight: 52 }}>CDL Next Day</div><div style={{ fontFamily: 'Figtree', fontSize: 20, fontWeight: 800, color: '#22302a' }}>£{immResult.cdl.nd.toFixed(2)}</div><button style={{ position: 'absolute', top: 8, right: 8, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleCopy(immResult.cdl.nd, 'cdlnd')}>{copied === 'cdlnd' ? '✓' : 'Copy'}</button></div>) : immResult.cdl.breakdown?.ndNote ? (<div style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: '1px solid #dde5e0', fontSize: 12.5, color: '#53605a' }}>ND: {immResult.cdl.breakdown.ndNote}</div>) : null}
                       {immResult.cdl.eco !== null ? (<div style={{ padding: '14px 16px', borderRadius: 12, background: '#f1f9f3', border: '1px solid #cce8d6', position: 'relative', flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#007835', marginBottom: 4, paddingRight: 52 }}>CDL Economy</div><div style={{ fontFamily: 'Figtree', fontSize: 20, fontWeight: 800, color: '#22302a' }}>£{immResult.cdl.eco.toFixed(2)}</div><button style={{ position: 'absolute', top: 8, right: 8, padding: '4px 10px', borderRadius: 8, border: '1px solid #cce8d6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#007835' }} onClick={() => handleCopy(immResult.cdl.eco, 'cdleco')}>{copied === 'cdleco' ? '✓' : 'Copy'}</button></div>) : immResult.cdl.breakdown?.ecoNote ? (<div style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: '1px solid #dde5e0', fontSize: 12.5, color: '#53605a' }}>Eco: {immResult.cdl.breakdown.ecoNote}</div>) : null}
