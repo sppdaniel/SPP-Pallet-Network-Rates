@@ -240,41 +240,20 @@ function getPallexOversizeMultiplier(wMm, lMm) {
 }
 
 function getCustomOversizeInfo(wMm, lMm, haulier) {
-  // Hauliers book standard sheet dims rounded down (3.05m -> 3.0m, 2.44m -> 2.4m, 1.22m -> 1.2m),
-  // so apply the same shave before banding. 1525 is kept as-is per the booking convention.
-  const shave = v => ({ 610: 600, 1220: 1200, 1830: 1800, 2440: 2400, 3050: 3000 }[v] || v);
-  // Matrix bands are in decimetres (12 = 1.2m), matching the haulier oversized matrices
-  const widthDm = shave(Math.min(wMm, lMm)) / 100;
-  const lengthDm = shave(Math.max(wMm, lMm)) / 100;
-  
-  // TWA matrix breakpoints
-  const twaWidthBands = [[0,12,0],[12.1,15,0.25],[15.1,18,0.50],[18.1,21,0.75],[21.1,24,1.0]];
-  const twaLengthBands = [[0,12,0],[12.1,15,0.25],[15.1,18,0.50],[18.1,21,0.75],[21.1,24,1.0],[24.1,27,1.25],[27.1,30,1.50],[30.1,33,1.75],[33.1,36,2.0],[36.1,39,2.25],[39.1,42,2.50],[42.1,45,2.75],[45.1,48,3.0],[48.1,51,3.25]];
-  
-  // Horizon matrix breakpoints (wider width bands)
-  const hzWidthBands = [[0,12,0],[12.1,16,0.25],[16.1,18,0.50],[18.1,21,0.75],[21.1,24,1.0]];
-  const hzLengthBands = twaLengthBands; // Same length bands
-  
-  const isHorizon = haulier.startsWith("Horizon");
-  const widthBands = isHorizon ? hzWidthBands : twaWidthBands;
-  const lengthBands = isHorizon ? hzLengthBands : twaLengthBands;
-  
-  let wPct = null, lPct = null;
-  for (const [lo, hi, pct] of widthBands) {
-    if (widthDm >= lo && widthDm <= hi) { wPct = pct; break; }
-  }
-  for (const [lo, hi, pct] of lengthBands) {
-    if (lengthDm >= lo && lengthDm <= hi) { lPct = pct; break; }
-  }
-  
-  if (wPct === null || lPct === null) return null; // N/A
-  
-  const totalPct = wPct + lPct;
-  if (totalPct === 0) return { multiplier: 1.0, label: "Standard rate", note: "Within standard dims" };
-  
-  const multiplier = 1 + totalPct;
-  const label = "STR + " + Math.round(totalPct * 100) + "%";
-  return { multiplier, label, note: (widthDm*10).toFixed(0) + "x" + (lengthDm*10).toFixed(0) + "cm" };
+  // Portals take standard sheet dims rounded down (3050 -> 3000, 2440 -> 2400, 1220 -> 1200).
+  // 1525 is deliberately NOT shaved here: 5x5 is invoice-verified at its true 1525.
+  const SHAVE = { 610: 600, 1220: 1200, 1830: 1800, 2440: 2400, 3050: 3000 };
+  const rawShort = Math.min(parseFloat(wMm), parseFloat(lMm));
+  const rawLong = Math.max(parseFloat(wMm), parseFloat(lMm));
+  const short = SHAVE[rawShort] || rawShort;
+  const long = SHAVE[rawLong] || rawLong;
+  const shaved = short !== rawShort || long !== rawLong;
+  // No cost-cover margin on custom sizes: the margin was agreed for 10x4 and 10x5 only.
+  const info = osLookup(short, long, haulier, 0);
+  if (info.multiplier === null) return info;
+  info.note = long + " x " + short + "mm declared (" + info.note + ")";
+  if (shaved) info.declareWarning = osPortalNote(short, long);
+  return info;
 }
 
 const SURCHARGES = [
@@ -893,39 +872,120 @@ function getPalletTypeIndex(weight, height) {
 // 5x10: 3050x1525mm = 305x153cm
 //   TWA: 151-180 x 301-330 = N/A
 //   Horizon: 121-160 x 301-330 = Rate + 200%
-function getOversizeInfo(palletSize, haulier, customW, customL) {
+// ===================== OVERSIZED MATRIX (transcribed, not calculated) =====================
+// Source documents:
+//   TWA     - TWA_2025_PRIMARY_RATE__Rate_1_0225_v1.pdf, page 9
+//   Pallex  - Pallex_Essex__Rate_Card_valid_15Jul26.pdf, page 7 ("Oversized Matrix")
+//   Horizon - Horizon_2026__Oversized_PDF.pdf, page 1 ("Pallex Oversized Pallets")
+// All three are the same Pall-Ex template. Percentages are held as printed rather than
+// derived by adding a width % to a length %, because the sheets are not additive at the
+// edges: the 240x240 cell jumps to +300%, and beyond the fifth column the sheets stop.
+// null = N/A on the sheet (no rate). Column bands are upper bounds in cm.
+const OS_COLS_CM = [120,150,180,210,240,270,300,330,360,390,420,450,480,510];
+// Short side of the pallet picks the row. TWA and Pallex print 121-150 / 151-180.
+const OS_ROWS_STD_CM = [120,150,180,210,240];
+// Horizon's copy prints 121-160 / 161-180 on this axis. Believed a typo in their sheet,
+// unconfirmed, so it is reproduced exactly as printed.
+const OS_ROWS_HZ_CM  = [120,160,180,210,240];
+const OS_GRID = [
+  [  0, 25, 50, 75,100,125,150,175,200,225,250,275,300,325],
+  [ 25, 50, 75,100,125,150,175,200,225,250,275,300,325,350],
+  [ 50, 75,100,125,150,null,null,null,null,null,null,null,null,null],
+  [ 75,100,125,150,175,null,null,null,null,null,null,null,null,null],
+  [100,125,150,175,300,null,null,null,null,null,null,null,null,null],
+];
+// Pallex prints Rate + 500% where TWA and Horizon print N/A. Not quoted automatically:
+// x6.00 is punitive enough that it should be confirmed by a person, and it usually means
+// the pallet has been declared smaller than it measures.
+const OS_PALLEX_NA_PCT = 500;
+
+// Dimensions SPP actually declares on each haulier portal, per pallet size.
+// This is NOT the physical panel size. 8x4 is declared 2400x1200 (invoice-verified at
+// STR+100%), 5x5 is declared at its true 1525 (invoice-verified at STR+100%), and
+// 10x4 / 10x5 are declared 3000x1200 and 3000x1500 per Dan, confirmed with TWA.
+const OS_DECLARED = {
+  "4x4":  { short: 1200, long: 1200 },
+  "8x4":  { short: 1200, long: 2400 },
+  "5x5":  { short: 1525, long: 1525 },
+  "10x4": { short: 1200, long: 3000 },
+  "10x5": { short: 1500, long: 3000 },
+};
+// Per-haulier declaration overrides.
+// Horizon 5x5: the app's long-standing x1.50 corresponds to declaring 1500 x 1500 on
+// Horizon's portal. Left exactly as it was, pending Horizon confirming (a) whether the
+// 121-160 band on their sheet is a typo and (b) how they want a 5x5 declared. Their
+// sheet read literally at the true 1525 would give Rate + 75% (x1.75).
+const OS_DECLARED_BY_HAULIER = {
+  "Horizon (Austin Wilkinson)": { "5x5": { short: 1500, long: 1500 } },
+};
+// Sizes carrying a deliberate one-bracket cost-cover margin, per Dan. Applied only to
+// these two: adding it to 8x4 or 5x5 would break their invoice reconciliation.
+const OS_MARGIN_SIZES = ["10x4", "10x5"];
+// Sizes whose declared dimensions are smaller than the physical panel, so the portal
+// declaration should be sanity-checked before the quote is used.
+const OS_DECLARE_WARN_SIZES = ["10x4", "10x5"];
+
+function osPortalNote(shortMm, longMm) {
+  return "Note - SPP declares this pallet as " + longMm + " x " + shortMm + " on the portal. " +
+         "Higher charges may be incurred if the pallet is measured and found to be oversized. " +
+         "Please check before proceeding.";
+}
+function osBandIndex(cm, bands) {
+  for (let i = 0; i < bands.length; i++) { if (cm <= bands[i]) return i; }
+  return -1;
+}
+// Looks up one cell. bracketShift moves the column right by n bands (the cost-cover margin).
+function osLookup(shortMm, longMm, haulier, bracketShift) {
   const isHorizon = haulier.startsWith("Horizon");
-  
+  const isPallex = haulier === "Pallex Essex";
+  const rowBands = isHorizon ? OS_ROWS_HZ_CM : OS_ROWS_STD_CM;
+  const ri = osBandIndex(shortMm / 10, rowBands);
+  let ci = osBandIndex(longMm / 10, OS_COLS_CM);
+  if (ri === -1 || ci === -1) {
+    return { multiplier: null, reason: "Pallet is larger than the oversized matrix covers (max 240cm x 510cm). Contact the haulier for a quotation." };
+  }
+  const baseCi = ci;
+  if (bracketShift) ci = Math.min(ci + bracketShift, OS_COLS_CM.length - 1);
+  let pct = OS_GRID[ri][ci];
+  const bandTxt = "short side up to " + rowBands[ri] + "cm, long side up to " + OS_COLS_CM[ci] + "cm";
+  if (pct === null) {
+    if (isPallex) {
+      return { multiplier: null, reason: "The Pallex oversized matrix prices this at Rate + " + OS_PALLEX_NA_PCT + "% (" + bandTxt + "). Confirm directly with Pallex before quoting." };
+    }
+    return { multiplier: null, reason: "N/A on the oversized matrix (" + bandTxt + "). Contact the haulier for a quotation." };
+  }
+  const info = {
+    multiplier: 1 + pct / 100,
+    label: (pct === 0 ? "Standard rate" : "Rate + " + pct + "%"),
+    note: bandTxt,
+  };
+  if (bracketShift && ci !== baseCi) {
+    const basePct = OS_GRID[ri][baseCi];
+    info.marginNote = "Costed at Rate + " + pct + "%. Matrix gives Rate + " + basePct +
+      "% at the declared size; one bracket added for cost cover.";
+  }
+  return info;
+}
+
+function getOversizeInfo(palletSize, haulier, customW, customL) {
   if (palletSize === "custom" && customW && customL) {
-    // If the custom dims match a named size, use the named-size rules so custom
-    // and named quotes can never disagree (e.g. TWA 3050x1220 must stay N/A like 10x4)
     const w = Math.min(parseFloat(customW), parseFloat(customL));
     const l = Math.max(parseFloat(customW), parseFloat(customL));
-    if (l === 2440 && w === 1220) return getOversizeInfo("8x4", haulier);
-    if (l === 1525 && w === 1525) return getOversizeInfo("5x5", haulier);
-    if (l === 3050 && w === 1220) return getOversizeInfo("10x4", haulier);
-    if (l === 3050 && w === 1525) return getOversizeInfo("10x5", haulier);
+    // If custom dims match a named panel, use the named rules so the two can never disagree.
+    for (const [id, d] of Object.entries({ "8x4": [1220, 2440], "5x5": [1525, 1525], "10x4": [1220, 3050], "10x5": [1525, 3050], "4x4": [1220, 1220] })) {
+      if (w === d[0] && l === d[1]) return getOversizeInfo(id, haulier);
+    }
     return getCustomOversizeInfo(customW, customL, haulier);
   }
-  if (palletSize === "8x4") {
-    return { multiplier: 2.0, label: "STR + 100%", note: "8x4 at 244x122cm" };
-  }
-  if (palletSize === "4x4") {
-    return { multiplier: 1.0, label: "Standard rate", note: "4x4 within standard dims" };
-  }
-  if (palletSize === "5x5") {
-    if (haulier === "TWA") return { multiplier: 2.0, label: "STR + 100%", note: "5x5 at 153x153cm" };
-    if (isHorizon) return { multiplier: 1.5, label: "Rate + 50%", note: "5x5 at 153x153cm" };
-  }
-  if (palletSize === "10x4") {
-    if (haulier === "TWA") return null; // N/A
-    if (isHorizon) return { multiplier: 3.0, label: "Rate + 200%", note: "10x4 at 305x122cm" };
-  }
-  if (palletSize === "10x5") {
-    if (haulier === "TWA") return null; // N/A
-    if (isHorizon) return { multiplier: 3.0, label: "Rate + 200%", note: "10x5 at 305x153cm" };
-  }
-  return null;
+  const byHaulier = OS_DECLARED_BY_HAULIER[haulier] || {};
+  const dec = byHaulier[palletSize] || OS_DECLARED[palletSize];
+  if (!dec) return null;
+  const shift = OS_MARGIN_SIZES.includes(palletSize) ? 1 : 0;
+  const info = osLookup(dec.short, dec.long, haulier, shift);
+  if (info.multiplier === null) return info;
+  info.note = palletSize + " declared " + dec.long + " x " + dec.short + " (" + info.note + ")";
+  if (OS_DECLARE_WARN_SIZES.includes(palletSize)) info.declareWarning = osPortalNote(dec.short, dec.long);
+  return info;
 }
 
 function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges, customW, customL, allWeights, collectionId) {
@@ -1198,12 +1258,15 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
     } else {
       // Oversized: look up from matrix
       const osInfo = getOversizeInfo(palletSize, "TWA", customW, customL);
-      if (!osInfo) {
-        result.errors.push(`${palletSize} is N/A on the TWA oversized matrix. Contact TWA for quotation.`);
+      if (!osInfo || osInfo.multiplier === null) {
+        result.errors.push(osInfo && osInfo.reason ? osInfo.reason
+          : `${palletSize} is N/A on the TWA oversized matrix. Contact TWA for quotation.`);
         return result;
       }
       
       result.info.push(`Oversized: ${palletSize} priced at ${osInfo.label} (${osInfo.note})`);
+      if (osInfo.marginNote) result.info.push(osInfo.marginNote);
+      if (osInfo.declareWarning) result.warnings.push(osInfo.declareWarning);
       
       const ndBase1 = getRate(ndRow, 1);
       const ecoBase1 = getRate(ecoRow, 1);
@@ -1272,12 +1335,15 @@ function calculateRate(haulier, postcode, palletSize, qty, weightKg, surcharges,
     } else {
       // Oversized: look up from matrix
       const osInfo = getOversizeInfo(palletSize, "Horizon (Austin Wilkinson)", customW, customL);
-      if (!osInfo) {
-        result.errors.push(`${palletSize} is N/A on the Horizon oversized matrix. Contact Horizon for quotation.`);
+      if (!osInfo || osInfo.multiplier === null) {
+        result.errors.push(osInfo && osInfo.reason ? osInfo.reason
+          : `${palletSize} is N/A on the Horizon oversized matrix. Contact Horizon for quotation.`);
         return result;
       }
       
       result.info.push(`Oversized: ${palletSize} priced at ${osInfo.label} (${osInfo.note})`);
+      if (osInfo.marginNote) result.info.push(osInfo.marginNote);
+      if (osInfo.declareWarning) result.warnings.push(osInfo.declareWarning);
       
       const baseNd = r[2]; // Full Premium as STR
       const baseEco = r[3]; // Full Economy as STR
